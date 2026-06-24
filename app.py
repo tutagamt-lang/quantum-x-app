@@ -114,10 +114,10 @@ except Exception:
     calculated_totp = ""
 
 st.sidebar.markdown("### 🔐 SMARTAPI INTEGRATION")
-api_key = st.sidebar.text_input("ANGELONE API KEY:", value=ANGEL_API_KEY, type="password")
-client_id = st.sidebar.text_input("CLIENT ID:", value=ANGEL_CLIENT_ID)
-password = st.sidebar.text_input("PIN/PASSWORD:", value=ANGEL_PASSWORD, type="password")
-totp_token = st.sidebar.text_input("TOTP TOKEN:", value=calculated_totp, type="password")
+api_key = st.secrets["angelone"]["api_key"]
+client_id = st.secrets["angelone"]["client_id"]
+password = st.secrets["angelone"]["password"]
+totp_token = st.secrets["angelone"]["totp_key"]
 
 # 📋 INTRADAY METALS WATCHLIST & TOKEN MAP
 MY_STOCKS = ["SAIL", "VEDL", "HINDALCO", "NATIONALUM", "HINDCOPPER"]
