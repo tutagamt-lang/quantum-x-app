@@ -103,10 +103,10 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # 🔐 API CREDENTIALS
-ANGEL_API_KEY = "rpg4LX8F"
-ANGEL_CLIENT_ID = "AACG314572"
-ANGEL_PASSWORD = "6227"
-ANGEL_TOTP_KEY = "Z5MZBUBZAHYJFNKEYHWIJP4HWA"
+API_KEY = st.secrets["angelone"]["api_key"]
+   CLIENT_ID = st.secrets["angelone"]["client_id"]
+   PASSWORD = st.secrets["angelone"]["password"]
+   TOTP_TOKEN = st.secrets["angelone"]["totp_token"]
 
 try:
     calculated_totp = pyotp.TOTP(ANGEL_TOTP_KEY.strip()).now()
