@@ -92,7 +92,7 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# 🔐 API CREDENTIALS FROM SECRETS
+# 🔐 API CREDENTIALS FROM SECRETS (பின்னணியில் இருந்து விபரங்களை எடுக்கும், சைடுபார் வராது)
 try:
     API_KEY = st.secrets["angelone"]["api_key"]
     CLIENT_ID = st.secrets["angelone"]["client_id"]
