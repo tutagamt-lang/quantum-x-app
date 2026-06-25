@@ -10,8 +10,11 @@ import pyotp
 import urllib.request
 import xml.etree.ElementTree as ET
 
-# 1. Page Configuration (NSE-like Wide Layout)
+# 1. Page Configuration
 st.set_page_config(layout="wide", page_title="QUANTUM-X Live Trading Terminal")
+
+# ⏱️ ஆட்டோ ரெஃப்ரெஷ் (AUTO-REFRESH): ஒவ்வொரு 10 விநாடிக்கும் பக்கம் தானாக புதுப்பிக்கப்படும்
+st.fragment(run_every="10s")
 
 try:
     from SmartApi import SmartConnect
@@ -23,12 +26,10 @@ st.markdown("""
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Roboto+Mono:wght@500;700&display=swap');
         
-        /* Base Reset & Background */
         .stApp { background-color: #F4F6F9 !important; color: #333333 !important; }
         * { font-family: 'Inter', sans-serif; }
         .block-container { padding-top: 0rem !important; padding-bottom: 1rem !important; padding-left: 2rem !important; padding-right: 2rem !important; }
         
-        /* NSE India Deep Navy Header Bar */
         .nse-header-bar {
             background: linear-gradient(90deg, #0c2340 0%, #1d3a60 100%);
             padding: 15px 25px;
@@ -44,9 +45,8 @@ st.markdown("""
         .nse-brand { color: #FFFFFF !important; font-size: 22px !important; font-weight: 700; letter-spacing: -0.5px; }
         .nse-brand span { color: #ffb81c; }
         
-        /* Dropdown custom alignment inside header area */
         div[data-testid="stSelectbox"] label {
-            color: #ffb81c !important;
+            color: #0c2340 !important;
             font-size: 11px !important;
             font-weight: 700 !important;
             text-transform: uppercase;
@@ -54,7 +54,6 @@ st.markdown("""
             margin-bottom: 4px;
         }
         
-        /* Premium Navigation Tabs (NSE Style) */
         div[data-testid="stTabs"] { background-color: transparent; margin-bottom: 20px; }
         div[data-testid="stTabs"] button {
             font-size: 14px !important;
@@ -73,62 +72,52 @@ st.markdown("""
             border-bottom: 3px solid #ffb81c !important;
         }
         
-        /* NSE Clean Metric Grid */
         .nse-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 15px; margin-bottom: 25px; }
         .nse-card { background: #FFFFFF; padding: 18px; border-radius: 4px; border: 1px solid #D2D6DC; border-top: 3px solid #0c2340; box-shadow: 0 2px 4px rgba(0,0,0,0.02); }
         .nse-label { color: #6574CD; font-size: 12px; font-weight: 700; letter-spacing: 0.5px; margin-bottom: 6px; }
         .nse-value { color: #0c2340; font-size: 24px; font-weight: 700; font-family: 'Roboto Mono', monospace; }
         
-        /* Information Dashboard Windows */
-        .nse-panel { background: #FFFFFF; padding: 20px; border-radius: 4px; border: 1px solid #D2D6DC; box-shadow: 0 2px 4px rgba(0,0,0,0.02); height: 100%; }
+        .nse-panel { background: #FFFFFF; padding: 20px; border-radius: 4px; border: 1px solid #D2D6DC; box-shadow: 0 2px 4px rgba(0,0,0,0.02); height: 100%; margin-bottom: 20px;}
         .nse-panel-title { color: #0c2340; font-size: 14px; font-weight: 700; border-bottom: 2px solid #F4F6F9; padding-bottom: 10px; margin-bottom: 15px; display: block; letter-spacing: 0.3px; }
         
-        /* Corporate Tables (Pure NSE Style) */
         .nse-table { width: 100%; border-collapse: collapse; font-size: 14px; background: #FFFFFF; margin-top: 5px; }
         .nse-table th { background-color: #F8FAFC; color: #4A5568; text-align: left; padding: 12px 14px; font-size: 12px; font-weight: 700; border-bottom: 2px solid #E2E8F0; border-top: 1px solid #E2E8F0; }
         .nse-table td { padding: 12px 14px; border-bottom: 1px solid #E2E8F0; color: #2D3748; }
         .nse-table tr:hover { background-color: #F8FAFC; }
         .mono-num { font-family: 'Roboto Mono', monospace !important; font-weight: 600; }
         
-        /* Sidebar Configuration */
-        section[data-testid="stSidebar"] { background-color: #0c2340 !important; }
-        section[data-testid="stSidebar"] * { color: #FFFFFF !important; }
-        section[data-testid="stSidebar"] input { color: #333333 !important; background-color: #FFFFFF !important; }
-        
-        /* News Section cards */
         .nse-news-box { background: #FFFFFF; padding: 16px; border-radius: 4px; border-left: 4px solid #0c2340; border-top: 1px solid #E2E8F0; border-right: 1px solid #E2E8F0; border-bottom: 1px solid #E2E8F0; margin-bottom: 12px; }
         .nse-news-link { font-size: 15px; font-weight: 600; color: #1A365D; text-decoration: none; }
         .nse-news-link:hover { color: #2B6CB0; text-decoration: underline; }
     </style>
 """, unsafe_allow_html=True)
 
-# 🔐 API CREDENTIALS
-API_KEY = st.secrets["angelone"]["api_key"]
-   CLIENT_ID = st.secrets["angelone"]["client_id"]
-   PASSWORD = st.secrets["angelone"]["password"]
-   TOTP_TOKEN = st.secrets["angelone"]["totp_token"]
-
+# 🔐 API CREDENTIALS FROM SECRETS
 try:
-    calculated_totp = pyotp.TOTP(ANGEL_TOTP_KEY.strip()).now()
-except Exception:
-    calculated_totp = ""
+    API_KEY = st.secrets["angelone"]["api_key"]
+    CLIENT_ID = st.secrets["angelone"]["client_id"]
+    PASSWORD = st.secrets["angelone"]["password"]
+    TOTP_TOKEN = st.secrets["angelone"]["totp_token"]
+except KeyError:
+    st.error("Secrets அமைப்புகளில் ஏஞ்சல் ஒன் நற்சான்றிதழ்கள் (Credentials) சரியாக இல்லை.")
+    st.stop()
 
-st.sidebar.markdown("### 🔐 SMARTAPI INTEGRATION")
-api_key = st.secrets["angelone"]["api_key"]
-client_id = st.secrets["angelone"]["client_id"]
-password = st.secrets["angelone"]["password"]
-totp_token = st.secrets["angelone"]["totp_key"]
+# 🌐 SMARTAPI SESSION MANAGER
+if "smart_conn" not in st.session_state:
+    try:
+        calculated_totp = pyotp.TOTP(TOTP_TOKEN.strip()).now()
+        smart_conn = SmartConnect(api_key=API_KEY)
+        session_data = smart_conn.generateSession(CLIENT_ID, PASSWORD, calculated_totp)
+        if session_data.get("status"):
+            st.session_state["smart_conn"] = smart_conn
+        else:
+            st.error("Session உருவாக்கத்தில் பிழை: " + str(session_data.get("message")))
+    except Exception as e:
+        st.error(f"AngelOne உடன் இணைப்பதில் சிக்கல்: {e}")
 
-# 📋 INTRADAY METALS WATCHLIST & TOKEN MAP
+# 📋 INTRADAY METALS WATCHLIST
 MY_STOCKS = ["SAIL", "VEDL", "HINDALCO", "NATIONALUM", "HINDCOPPER"]
-
-TOKEN_MAP = {
-    "SAIL": "2963",
-    "VEDL": "3063",
-    "HINDALCO": "1363",
-    "NATIONALUM": "6364",
-    "HINDCOPPER": "3103"
-}
+TOKEN_MAP = {"SAIL": "2963", "VEDL": "3063", "HINDALCO": "1363", "NATIONALUM": "6364", "HINDCOPPER": "3103"}
 
 def get_fo_regime(price_change, oi_change):
     if oi_change > 0 and price_change > 0: return "LONG BUILDUP", "#10B981"
@@ -164,54 +153,50 @@ def fetch_stock_news(symbol):
         news_list = [{"title": f"Analyzing market intelligence for {symbol}", "link": "#", "date": "Just now", "source": "NSE"}]
     return news_list
 
-@st.cache_data(ttl=300)
-def fetch_historic_candles(symbol, token, today_date, _api_key, _client_id, _password, _totp):
-    try:
-        smart_conn = SmartConnect(api_key=_api_key)
-        smart_conn.generateSession(_client_id, _password, _totp)
-        historic_param = {
-            "exchange": "NSE", "symboltoken": token, "interval": "ONE_MINUTE",
-            "fromdate": f"{today_date} 09:15", "todate": f"{today_date} 15:30"
-        }
-        response = smart_conn.getCandleData(historic_param)
-        if response and response.get("status") and response.get("data"):
-            return response["data"]
-    except Exception:
-        pass
+def fetch_historic_candles(symbol, token, today_date):
+    if "smart_conn" in st.session_state:
+        try:
+            historic_param = {
+                "exchange": "NSE", "symboltoken": token, "interval": "ONE_MINUTE",
+                "fromdate": f"{today_date} 09:15", "todate": f"{today_date} 15:30"
+            }
+            response = st.session_state["smart_conn"].getCandleData(historic_param)
+            if response and response.get("status") and response.get("data"):
+                return response["data"]
+        except Exception:
+            pass
     return []
 
-def fetch_current_ltp(symbol, token, _api_key, _client_id, _password, _totp):
-    try:
-        smart_conn = SmartConnect(api_key=_api_key)
-        smart_conn.generateSession(_client_id, _password, _totp)
-        ltp_response = smart_conn.getLtpData("NSE", f"{symbol}-EQ", token)
-        if ltp_response and ltp_response.get("status") and ltp_response.get("data"):
-            return float(ltp_response["data"].get("ltp", 0))
-    except Exception:
-        pass
+def fetch_current_ltp(symbol, token):
+    if "smart_conn" in st.session_state:
+        try:
+            ltp_response = st.session_state["smart_conn"].getLtpData("NSE", f"{symbol}-EQ", token)
+            if ltp_response and ltp_response.get("status") and ltp_response.get("data"):
+                return float(ltp_response["data"].get("ltp", 0))
+        except Exception:
+            pass
     return None
 
 # 🏛️ GENERATE NSE INDIA TOP HEADER BAR
 st.markdown("""
     <div class="nse-header-bar">
         <div class="nse-brand">QUANTUM-X <span>LIVE MARKET TERMINAL</span></div>
-        <div style="width: 280px;" id="selectbox-placeholder"></div>
     </div>
 """, unsafe_allow_html=True)
 
-# Overlay Streamlit widget cleanly side-by-side using columns layout
+# Layout setup for Selector Row
 header_spacer, selector_col = st.columns([3, 1])
 with selector_col:
-    # Placed in the top right exactly matching the layout position of NSE select elements
     selected_focus = st.selectbox("📊 SELECT ACTIVE EQUITY INSTANCE", options=MY_STOCKS)
 
 ist_offset = timezone(timedelta(hours=5, minutes=30))
-today_str = datetime.now(ist_offset).strftime("%Y-%m-%d")
-active_token = TOKEN_MAP.get(selected_focus, "2963")
+
+# 📌 டெஸ்டிங் செய்ய தற்காலிகமாக பழைய தேதி மாற்றப்பட்டுள்ளது (நாளை காலை இதை மாற்றவும்)
+today_str = "2026-06-24" 
 
 # Global Data Fetching
-candle_data = fetch_historic_candles(selected_focus, active_token, today_str, api_key, client_id, password, totp_token)
-live_tick_price = fetch_current_ltp(selected_focus, active_token, api_key, client_id, password, totp_token)
+candle_data = fetch_historic_candles(selected_focus, active_token := TOKEN_MAP.get(selected_focus, "2963"), today_str)
+live_tick_price = fetch_current_ltp(selected_focus, active_token)
 
 # Dataframe calculations
 if candle_data:
@@ -249,7 +234,7 @@ if candle_data:
 else:
     live_price, current_vwap, oi_difference, matrix_close, matrix_open, day_change, pct_change = 0, 0, 0, 0, 0, 0, 0
 
-# 🗺️ NSE INDIA NAVIGATION TABS SYSTEM
+# Navigation Tabs System
 tab_live, tab_fo, tab_news = st.tabs(["Equity & Market Tracker", "Derivatives (F&O Matrix)", "Company Insights & News"])
 
 # ----------------- TAB 1: EQUITY LIVE MARKET -----------------
@@ -277,6 +262,19 @@ with tab_live:
         </div>
         """, unsafe_allow_html=True)
 
+        # 📈 புதிய கேண்டில்ஸ்டிக் சார்ட் இங்கே சேர்க்கப்பட்டுள்ளது
+        st.markdown("<div class='nse-panel'><span class='nse-panel-title'>📈 REAL-TIME CANDLESTICK VISUALIZER</span>", unsafe_allow_html=True)
+        fig = go.Figure(data=[go.Candlestick(
+            x=df.index, open=df['Open'], high=df['High'], low=df['Low'], close=df['Close'],
+            name=selected_focus, increasing_line_color='#00B074', decreasing_line_color='#f44336'
+        )])
+        fig.update_layout(
+            margin=dict(l=10, r=10, t=10, b=10), height=400,
+            xaxis_rangeslider_visible=False, template="plotly_white"
+        )
+        st.plotly_chart(fig, use_container_width=True)
+        st.markdown("</div>", unsafe_allow_html=True)
+
         layout_col1, layout_col2 = st.columns([1.4, 1])
         with layout_col1:
             st.markdown("<div class='nse-panel'><span class='nse-panel-title'>🎯 NSE PIVOT POINTS ELEMENT ENGINE</span>", unsafe_allow_html=True)
@@ -302,7 +300,7 @@ with tab_live:
             </div>
             """, unsafe_allow_html=True)
     else:
-        st.info("🔄 தரவைச் சேகரிக்கிறது... உங்கள் ஏஞ்சல் ஒன் API-ஐச் சரிபார்க்கவும்.")
+        st.info("🔄 தரவைச் சேகரிக்கிறது... அல்லது ஏஞ்சல் ஒன் API இணைப்பைச் சரிபார்க்கவும்.")
 
 # ----------------- TAB 2: F&O DERIVATIVES MATRIX -----------------
 with tab_fo:
@@ -325,7 +323,7 @@ with tab_fo:
             sig_box_color = "#f44336"
         else:
             strategy_signal = "MARKET CONSOLIDATION (NEUTRAL)"
-            signal_desc = "டெரிவேட்டிவ் சந்தை மற்றும் ஆப்ஷன்ஸ் தரவுகள் தெளிவற்ற பக்கவாட்டு நகர்வை (Sideways) காட்டுவதால், பிரேக்அவுட் நிகழும் வரை புதிய வர்த்தகத்தைத் தவிர்க்கவும்."
+            signal_desc = "டெரிவேட்டிவ் சந்தை மற்றும் ஆப்ชั่นஸ் தரவுகள் தெளிவற்ற பக்கவாட்டு நகர்வை (Sideways) காட்டுவதால், பிரேக்அவுட் நிகழும் வரை புதிய வர்த்தகத்தைத் தவிர்க்கவும்."
             sig_box_color = "#ffb81c"
 
         col_f1, col_f2 = st.columns(2)
