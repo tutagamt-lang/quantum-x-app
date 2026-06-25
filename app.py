@@ -101,7 +101,6 @@ try:
 except KeyError:
     st.error("Secrets அமைப்புகளில் ஏஞ்சல் ஒன் நற்சான்றிதழ்கள் (Credentials) சரியாக இல்லை.")
     st.stop()
-
 # 🌐 SMARTAPI SESSION MANAGER
 if "smart_conn" not in st.session_state:
     try:
