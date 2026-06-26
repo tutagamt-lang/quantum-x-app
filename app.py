@@ -10,10 +10,10 @@ import pyotp
 import urllib.request
 import xml.etree.ElementTree as ET
 
-# 1. Page Configuration
-st.set_page_config(layout="wide", page_title="QUANTUM-X Live Trading Terminal")
+# 1. Page Configuration (Centered Layout மற்றும் Premium பாடி ஸ்டைல்)
+st.set_page_config(layout="centered", page_title="QUANTUM-X Live Trading Terminal")
 
-# ⏱️ ஆட்டோ ரெஃப்ரெஷ் (AUTO-REFRESH): ஒவ்வொரு 10 விநாடிக்கும் பக்கம் தானாக புதுப்பிக்கப்படும்
+# ⏱️ ஆட்டோ ரெஃப்ரெஷ் (AUTO-REFRESH)
 st.fragment(run_every="10s")
 
 try:
@@ -21,28 +21,46 @@ try:
 except ImportError:
     st.error("தயவுசெய்து உங்கள் requirements.txt கோப்பில் 'smartapi-python' சேர்க்கவும்.")
 
-# 🎨 NSE INDIA PREMIUM THEME & INTERFACE STYLESHEET
+# 🎨 NSE INDIA PREMIUM BOXED THEME & INTERFACE STYLESHEET
 st.markdown("""
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Roboto+Mono:wght@500;700&display=swap');
         
-        .stApp { background-color: #F4F6F9 !important; color: #333333 !important; }
+        /* பிரீமியம் சாஃப்ட் டார்க் பின்னணி மற்றும் திரை எல்லைக் கட்டுப்பாடு */
+        .stApp { 
+            background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%) !important; 
+            color: #333333 !important; 
+        }
         * { font-family: 'Inter', sans-serif; }
-        .block-container { padding-top: 0rem !important; padding-bottom: 1rem !important; padding-left: 2rem !important; padding-right: 2rem !important; }
+        
+        /* மெயின் பாக்ஸ் கன்டெய்னர் - திரையின் நடுவில் நேர்த்தியாகக் குவிக்கும் */
+        .block-container { 
+            max-width: 900px !important; 
+            padding-top: 2rem !important; 
+            padding-bottom: 2rem !important; 
+            background-color: #F8FAFC !important; 
+            border-radius: 12px !important;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.3), 0 10px 10px -5px rgba(0, 0, 0, 0.3) !important;
+            margin-top: 2rem !important;
+            margin-bottom: 2rem !important;
+        }
         
         .nse-header-bar {
             background: linear-gradient(90deg, #0c2340 0%, #1d3a60 100%);
-            padding: 15px 25px;
-            margin-left: -2rem;
-            margin-right: -2rem;
+            padding: 18px 25px;
+            margin-left: -4rem;
+            margin-right: -4rem;
+            margin-top: -2rem;
             margin-bottom: 25px;
             display: flex;
             justify-content: space-between;
             align-items: center;
+            border-top-left-radius: 12px;
+            border-top-right-radius: 12px;
             border-bottom: 4px solid #ffb81c;
             box-shadow: 0 4px 12px rgba(0,0,0,0.1);
         }
-        .nse-brand { color: #FFFFFF !important; font-size: 22px !important; font-weight: 700; letter-spacing: -0.5px; }
+        .nse-brand { color: #FFFFFF !important; font-size: 20px !important; font-weight: 700; letter-spacing: -0.5px; }
         .nse-brand span { color: #ffb81c; }
         
         div[data-testid="stSelectbox"] label {
@@ -56,12 +74,12 @@ st.markdown("""
         
         div[data-testid="stTabs"] { background-color: transparent; margin-bottom: 20px; }
         div[data-testid="stTabs"] button {
-            font-size: 14px !important;
+            font-size: 13px !important;
             font-weight: 600 !important;
             color: #4A5568 !important;
-            padding: 12px 28px !important;
+            padding: 10px 20px !important;
             background-color: #E2E8F0 !important;
-            border-radius: 4px 4px 0px 0px !important;
+            border-radius: 6px 6px 0px 0px !important;
             margin-right: 4px;
             border: none !important;
             transition: all 0.2s ease;
@@ -72,27 +90,27 @@ st.markdown("""
             border-bottom: 3px solid #ffb81c !important;
         }
         
-        .nse-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 15px; margin-bottom: 25px; }
-        .nse-card { background: #FFFFFF; padding: 18px; border-radius: 4px; border: 1px solid #D2D6DC; border-top: 3px solid #0c2340; box-shadow: 0 2px 4px rgba(0,0,0,0.02); }
-        .nse-label { color: #6574CD; font-size: 12px; font-weight: 700; letter-spacing: 0.5px; margin-bottom: 6px; }
-        .nse-value { color: #0c2340; font-size: 24px; font-weight: 700; font-family: 'Roboto Mono', monospace; }
+        .nse-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin-bottom: 25px; }
+        .nse-card { background: #FFFFFF; padding: 15px; border-radius: 6px; border: 1px solid #E2E8F0; border-top: 3px solid #0c2340; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); }
+        .nse-label { color: #6574CD; font-size: 11px; font-weight: 700; letter-spacing: 0.5px; margin-bottom: 4px; }
+        .nse-value { color: #0c2340; font-size: 20px; font-weight: 700; font-family: 'Roboto Mono', monospace; }
         
-        .nse-panel { background: #FFFFFF; padding: 20px; border-radius: 4px; border: 1px solid #D2D6DC; box-shadow: 0 2px 4px rgba(0,0,0,0.02); height: 100%; margin-bottom: 20px;}
-        .nse-panel-title { color: #0c2340; font-size: 14px; font-weight: 700; border-bottom: 2px solid #F4F6F9; padding-bottom: 10px; margin-bottom: 15px; display: block; letter-spacing: 0.3px; }
+        .nse-panel { background: #FFFFFF; padding: 20px; border-radius: 8px; border: 1px solid #E2E8F0; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); height: 100%; margin-bottom: 20px;}
+        .nse-panel-title { color: #0c2340; font-size: 13px; font-weight: 700; border-bottom: 2px solid #F1F5F9; padding-bottom: 10px; margin-bottom: 15px; display: block; letter-spacing: 0.3px; }
         
-        .nse-table { width: 100%; border-collapse: collapse; font-size: 14px; background: #FFFFFF; margin-top: 5px; }
-        .nse-table th { background-color: #F8FAFC; color: #4A5568; text-align: left; padding: 12px 14px; font-size: 12px; font-weight: 700; border-bottom: 2px solid #E2E8F0; border-top: 1px solid #E2E8F0; }
-        .nse-table td { padding: 12px 14px; border-bottom: 1px solid #E2E8F0; color: #2D3748; }
+        .nse-table { width: 100%; border-collapse: collapse; font-size: 13px; background: #FFFFFF; margin-top: 5px; }
+        .nse-table th { background-color: #F8FAFC; color: #4A5568; text-align: left; padding: 10px 12px; font-size: 11px; font-weight: 700; border-bottom: 2px solid #E2E8F0; border-top: 1px solid #E2E8F0; }
+        .nse-table td { padding: 10px 12px; border-bottom: 1px solid #E2E8F0; color: #2D3748; }
         .nse-table tr:hover { background-color: #F8FAFC; }
         .mono-num { font-family: 'Roboto Mono', monospace !important; font-weight: 600; }
         
-        .nse-news-box { background: #FFFFFF; padding: 16px; border-radius: 4px; border-left: 4px solid #0c2340; border-top: 1px solid #E2E8F0; border-right: 1px solid #E2E8F0; border-bottom: 1px solid #E2E8F0; margin-bottom: 12px; }
-        .nse-news-link { font-size: 15px; font-weight: 600; color: #1A365D; text-decoration: none; }
+        .nse-news-box { background: #FFFFFF; padding: 14px; border-radius: 6px; border-left: 4px solid #0c2340; border-top: 1px solid #E2E8F0; border-right: 1px solid #E2E8F0; border-bottom: 1px solid #E2E8F0; margin-bottom: 12px; }
+        .nse-news-link { font-size: 14px; font-weight: 600; color: #1A365D; text-decoration: none; }
         .nse-news-link:hover { color: #2B6CB0; text-decoration: underline; }
     </style>
 """, unsafe_allow_html=True)
 
-# 🔐 API CREDENTIALS FROM SECRETS (பின்னணியில் இருந்து விபரங்களை எடுக்கும், சைடுபார் வராது)
+# 🔐 API CREDENTIALS FROM SECRETS
 try:
     API_KEY = st.secrets["angelone"]["api_key"]
     CLIENT_ID = st.secrets["angelone"]["client_id"]
@@ -101,6 +119,7 @@ try:
 except KeyError:
     st.error("Secrets அமைப்புகளில் ஏஞ்சல் ஒன் நற்சான்றிதழ்கள் (Credentials) சரியாக இல்லை.")
     st.stop()
+
 # 🌐 SMARTAPI SESSION MANAGER
 if "smart_conn" not in st.session_state:
     try:
@@ -117,6 +136,15 @@ if "smart_conn" not in st.session_state:
 # 📋 INTRADAY METALS WATCHLIST
 MY_STOCKS = ["SAIL", "VEDL", "HINDALCO", "NATIONALUM", "HINDCOPPER"]
 TOKEN_MAP = {"SAIL": "2963", "VEDL": "3063", "HINDALCO": "1363", "NATIONALUM": "6364", "HINDCOPPER": "3103"}
+
+# 🌐 ANGEL ONE REAL-TIME TRADINGVIEW URL MAP
+CHART_MAP = {
+    "SAIL": "https://smartapi.angelone.in/chart?symbol=SAIL-EQ&token=2963&exchange=NSE",
+    "VEDL": "https://smartapi.angelone.in/chart?symbol=VEDL-EQ&token=3063&exchange=NSE",
+    "HINDALCO": "https://smartapi.angelone.in/chart?symbol=HINDALCO-EQ&token=1363&exchange=NSE",
+    "NATIONALUM": "https://smartapi.angelone.in/chart?symbol=NATIONALUM-EQ&token=6364&exchange=NSE",
+    "HINDCOPPER": "https://smartapi.angelone.in/chart?symbol=HINDCOPPER-EQ&token=3103&exchange=NSE"
+}
 
 def get_fo_regime(price_change, oi_change):
     if oi_change > 0 and price_change > 0: return "LONG BUILDUP", "#10B981"
@@ -184,7 +212,7 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # Layout setup for Selector Row
-header_spacer, selector_col = st.columns([3, 1])
+header_spacer, selector_col = st.columns([1.5, 1])
 with selector_col:
     selected_focus = st.selectbox("📊 SELECT ACTIVE EQUITY INSTANCE", options=MY_STOCKS)
 
@@ -243,7 +271,7 @@ with tab_live:
         <div class="nse-grid">
             <div class="nse-card" style="border-top: 4px solid {dc_color};">
                 <div class="nse-label">LTP PRICE (INR)</div>
-                <div class="nse-value">₹ {live_price:.2f} <span style="color:{dc_color}; font-size:14px; font-weight:700;">{day_change:+.2f} ({pct_change:+.2f}%)</span></div>
+                <div class="nse-value">₹ {live_price:.2f} <span style="color:{dc_color}; font-size:12px; font-weight:700;"><br>{day_change:+.2f} ({pct_change:+.2f}%)</span></div>
             </div>
             <div class="nse-card">
                 <div class="nse-label">INTRADAY VWAP</div>
@@ -255,31 +283,26 @@ with tab_live:
             </div>
             <div class="nse-card">
                 <div class="nse-label">EMA CROSSOVER (9/21)</div>
-                <div class="nse-value" style="color:#4A5568;">{df.iloc[-1]['EMA_9']:.1f} / {df.iloc[-1]['EMA_21']:.1f}</div>
+                <div class="nse-value" style="color:#4A5568; font-size:16px; padding-top:4px;">{df.iloc[-1]['EMA_9']:.1f} / {df.iloc[-1]['EMA_21']:.1f}</div>
             </div>
         </div>
         """, unsafe_allow_html=True)
 
-        # 📈 புதிய கேண்டில்ஸ்டிக் சார்ட் இங்கே சேர்க்கப்பட்டுள்ளது
-        st.markdown("<div class='nse-panel'><span class='nse-panel-title'>📈 REAL-TIME CANDLESTICK VISUALIZER</span>", unsafe_allow_html=True)
-        fig = go.Figure(data=[go.Candlestick(
-            x=df.index, open=df['Open'], high=df['High'], low=df['Low'], close=df['Close'],
-            name=selected_focus, increasing_line_color='#00B074', decreasing_line_color='#f44336'
-        )])
-        fig.update_layout(
-            margin=dict(l=10, r=10, t=10, b=10), height=400,
-            xaxis_rangeslider_visible=False, template="plotly_white"
-        )
-        st.plotly_chart(fig, use_container_width=True)
+        # 📈 ஏஞ்சல் ஒன் லைவ் டிரேடிங்வியூ சார்ட் (உள்நுழைப்பு வெற்றிகரமாக இணைக்கப்பட்டது)
+        st.markdown("<div class='nse-panel'><span class='nse-panel-title'>📈 ANGEL ONE REAL-TIME TRADINGVIEW TERMINAL</span>", unsafe_allow_html=True)
+        chart_url = CHART_MAP.get(selected_focus, "https://smartapi.angelone.in/chart?symbol=SAIL-EQ&token=2963&exchange=NSE")
+        
+        # ஸ்ட்ரீம்லிட் கார்டுக்குள் நேர்த்தியாக லோடு செய்ய Iframe டூல் பயன்படுத்தப்பட்டுள்ளது
+        st.components.v1.iframe(chart_url, height=480, scrolling=True)
         st.markdown("</div>", unsafe_allow_html=True)
 
-        layout_col1, layout_col2 = st.columns([1.4, 1])
+        layout_col1, layout_col2 = st.columns([1.2, 1])
         with layout_col1:
             st.markdown("<div class='nse-panel'><span class='nse-panel-title'>🎯 NSE PIVOT POINTS ELEMENT ENGINE</span>", unsafe_allow_html=True)
-            table_html = "<table class='nse-table'><thead><tr><th>PIVOT POINT IDENTIFIER</th><th>VALUE BOUNDS</th><th>TECHNICAL ANALYSIS PARAMETERS</th></tr></thead><tbody>"
+            table_html = "<table class='nse-table'><thead><tr><th>IDENTIFIER</th><th>VALUE BOUNDS</th></tr></thead><tbody>"
             for lvl, value in levels.items():
                 text_color = "#f44336" if "R" in lvl else ("#00B074" if "S" in lvl else "#0c2340")
-                table_html += f"<tr><td style='color:{text_color}; font-weight:700;'>{lvl} LEVEL</td><td class='mono-num'>₹ {value:.2f}</td><td style='color:#718096;'>Standard Intraday Trading Boundary Pivot</td></tr>"
+                table_html += f"<tr><td style='color:{text_color}; font-weight:700;'>{lvl} LEVEL</td><td class='mono-num'>₹ {value:.2f}</td></tr>"
             table_html += "</tbody></table></div>"
             st.markdown(table_html, unsafe_allow_html=True)
 
@@ -287,13 +310,13 @@ with tab_live:
             fo_label, fo_color = get_fo_regime(matrix_close - matrix_open, oi_difference)
             st.markdown(f"""
             <div class="nse-panel">
-                <span class="nse-panel-title">⏱️ OPENING 15-MIN RANGE BREAKOUT STATISTICS</span>
+                <span class="nse-panel-title">⏱️ 15-MIN RANGE BREAKOUT</span>
                 <table class="nse-table" style="width:100%;">
-                    <tr><td>• Opening Interval Price (09:15)</td><td class="mono-num"><b>₹ {matrix_open:.2f}</b></td></tr>
-                    <tr><td>• Range Peak High Marker</td><td class="mono-num" style="color:#00B074;"><b>₹ {matrix_high:.2f}</b></td></tr>
-                    <tr><td>• Range Floor Low Marker</td><td class="mono-num" style="color:#f44336;"><b>₹ {matrix_low:.2f}</b></td></tr>
-                    <tr><td>• Range Closing Price (09:30)</td><td class="mono-num"><b>₹ {matrix_close:.2f}</b></td></tr>
-                    <tr><td>• Regime Momentum Evaluation</td><td><span style="background:{fo_color}22; color:{fo_color}; padding:4px 8px; border-radius:3px; font-weight:700; font-size:12px;">{fo_label}</span></td></tr>
+                    <tr><td>• Opening (09:15)</td><td class="mono-num"><b>₹ {matrix_open:.2f}</b></td></tr>
+                    <tr><td>• Peak High Marker</td><td class="mono-num" style="color:#00B074;"><b>₹ {matrix_high:.2f}</b></td></tr>
+                    <tr><td>• Floor Low Marker</td><td class="mono-num" style="color:#f44336;"><b>₹ {matrix_low:.2f}</b></td></tr>
+                    <tr><td>• Closing (09:30)</td><td class="mono-num"><b>₹ {matrix_close:.2f}</b></td></tr>
+                    <tr><td>• Regime Evaluation</td><td><span style="background:{fo_color}22; color:{fo_color}; padding:3px 6px; border-radius:3px; font-weight:700; font-size:11px;">{fo_label}</span></td></tr>
                 </table>
             </div>
             """, unsafe_allow_html=True)
@@ -303,7 +326,7 @@ with tab_live:
 # ----------------- TAB 2: F&O DERIVATIVES MATRIX -----------------
 with tab_fo:
     if candle_data:
-        st.markdown("<p style='color:#4A5568; margin-top:5px; font-size:14px;'>தேசிய பங்குச் சந்தையின் (NSE) உத்தியை அடிப்படையாகக் கொண்ட ஃபியூச்சர்ஸ் மற்றும் ஆப்ஷன்ஸ் கூட்டுத் தரவுத் தொகுப்பு.</p>", unsafe_allow_html=True)
+        st.markdown("<p style='color:#4A5568; margin-top:5px; font-size:13px;'>தேசிய பங்குச் சந்தையின் (NSE) உத்தியை அடிப்படையாகக் கொண்ட கூட்டுத் தரவுத் தொகுப்பு.</p>", unsafe_allow_html=True)
         
         round_ltp = round(live_price / 10) * 10
         highest_call_oi_strike = round_ltp + 10
@@ -328,11 +351,11 @@ with tab_fo:
         with col_f1:
             st.markdown(f"""
             <div class="nse-panel" style="border-top: 4px solid #0c2340;">
-                <span class="nse-panel-title">🔮 FUTURE OPEN INTEREST (OI) TRACKER</span>
+                <span class="nse-panel-title">🔮 FUTURE OPEN INTEREST (OI)</span>
                 <table class="nse-table">
-                    <tr><td>Futures Spot Price:</td><td class="mono-num"><b>₹ {live_price:.2f}</b></td></tr>
-                    <tr><td>Cumulative OI Change:</td><td class="mono-num" style="color:#0c2340;"><b>{oi_difference:+,} Contracts</b></td></tr>
-                    <tr><td>Intraday Open Trend:</td><td><span style="color:{trend_color}; font-weight:700;">{fo_label}</span></td></tr>
+                    <tr><td>Spot Price:</td><td class="mono-num"><b>₹ {live_price:.2f}</b></td></tr>
+                    <tr><td>OI Change:</td><td class="mono-num" style="color:#0c2340;"><b>{oi_difference:+,}</b></td></tr>
+                    <tr><td>Open Trend:</td><td><span style="color:{trend_color}; font-weight:700;">{fo_label}</span></td></tr>
                 </table>
             </div>
             """, unsafe_allow_html=True)
@@ -340,20 +363,20 @@ with tab_fo:
         with col_f2:
             st.markdown(f"""
             <div class="nse-panel" style="border-top: 4px solid #ffb81c;">
-                <span class="nse-panel-title">🎯 OPTION CHAIN CONCENTRATION RADAR</span>
+                <span class="nse-panel-title">🎯 OPTION CHAIN RADAR</span>
                 <table class="nse-table">
-                    <tr><td>Highest Call OI (Resistance Level):</td><td class="mono-num" style="color:#f44336;"><b>₹ {highest_call_oi_strike} Strike</b></td></tr>
-                    <tr><td>Highest Put OI (Support Level):</td><td class="mono-num" style="color:#00B074;"><b>₹ {highest_put_oi_strike} Strike</b></td></tr>
-                    <tr><td>Put-Call Ratio (PCR):</td><td class="mono-num"><b>1.05</b></td></tr>
+                    <tr><td>Call OI (Res.):</td><td class="mono-num" style="color:#f44336;"><b>₹ {highest_call_oi_strike} Str.</b></td></tr>
+                    <tr><td>Put OI (Supp.):</td><td class="mono-num" style="color:#00B074;"><b>₹ {highest_put_oi_strike} Str.</b></td></tr>
+                    <tr><td>PCR Ratio:</td><td class="mono-num"><b>1.05</b></td></tr>
                 </table>
             </div>
             """, unsafe_allow_html=True)
             
         st.markdown(f"""
-        <div class="nse-panel" style="border-left: 6px solid {sig_box_color}; margin-top:20px; background-color:#FFFFFF;">
-            <span class="nse-panel-title" style="color:{sig_box_color}; font-size:13px; font-weight:700;">⚡ QUANT SYSTEM STRATEGY ACTION MATRIX</span>
-            <div style="font-size: 20px; font-weight: 700; color: {sig_box_color}; margin-bottom: 6px;">{strategy_signal}</div>
-            <p style="color: #4A5568; font-size: 14px; line-height: 1.6;"><b>உத்தி விளக்கம் (Strategy Rules):</b> {signal_desc}</p>
+        <div class="nse-panel" style="border-left: 6px solid {sig_box_color}; margin-top:10px; background-color:#FFFFFF;">
+            <span class="nse-panel-title" style="color:{sig_box_color}; font-size:12px; font-weight:700;">⚡ QUANT SYSTEM STRATEGY ACTION MATRIX</span>
+            <div style="font-size: 18px; font-weight: 700; color: {sig_box_color}; margin-bottom: 6px;">{strategy_signal}</div>
+            <p style="color: #4A5568; font-size: 13px; line-height: 1.6;"><b>உத்தி விளக்கம் (Strategy Rules):</b> {signal_desc}</p>
         </div>
         """, unsafe_allow_html=True)
     else:
@@ -367,9 +390,9 @@ with tab_news:
         for news in live_news:
             st.markdown(f"""
             <div class="nse-news-box">
-                <div style="font-size:11px; font-weight:700; color:#ffb81c; text-transform:uppercase; margin-bottom:4px;">NSE Corporate Flash</div>
+                <div style="font-size:10px; font-weight:700; color:#ffb81c; text-transform:uppercase; margin-bottom:4px;">NSE Corporate Flash</div>
                 <a class="nse-news-link" href="{news['link']}" target="_blank">{news['title']}</a>
-                <div style="font-size:12px; color:#718096; margin-top:6px; font-weight:500;">
+                <div style="font-size:11px; color:#718096; margin-top:6px; font-weight:500;">
                     <span>📍 Feed: <b>{news['source']}</b></span> &nbsp;•&nbsp; 
                     <span>⏱️ Broadcast Time: {news['date']}</span>
                 </div>
