@@ -189,10 +189,9 @@ header_spacer, selector_col = st.columns([3, 1])
 with selector_col:
     selected_focus = st.selectbox("📊 SELECT ACTIVE EQUITY INSTANCE", options=MY_STOCKS)
 
+# 🌐 இந்திய நேரப்படி (IST) நடப்புத் தேதியைத் தானாகவே கணக்கிடுதல்
 ist_offset = timezone(timedelta(hours=5, minutes=30))
-
-# 📌 டெஸ்டிங் செய்ய தற்காலிகமாக பழைய தேதி மாற்றப்பட்டுள்ளது (நாளை காலை இதை மாற்றவும்)
-today_str = "2026-06-24" 
+today_str = datetime.now(ist_offset).strftime("%Y-%m-%d")
 
 # Global Data Fetching
 candle_data = fetch_historic_candles(selected_focus, active_token := TOKEN_MAP.get(selected_focus, "2963"), today_str)
