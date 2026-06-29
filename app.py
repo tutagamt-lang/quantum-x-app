@@ -340,6 +340,7 @@ with tab_live:
     width="100%" height="450" frameborder="0" allowtransparency="true" scrolling="no" allowfullscreen></iframe>
     """
     st.components.v1.html(tradingview_widget_html, height=450)
+    st.markdown("</div>", unsafe_allow_html=True)
 
 # TAB 2: NEWS & INSIGHTS
 with tab_news:
