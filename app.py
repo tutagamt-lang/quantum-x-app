@@ -239,8 +239,8 @@ if candle_data:
     oi_difference = 2500
     matrix_open = 148.0
     matrix_close = 150.0
-    matrix_high = 152.0  # <--- விடுபட்ட இந்த வரியைச் சேர்த்துள்ளோம்!
-    matrix_low = 147.0   # <--- விடுபட்ட இந்த வரியைச் சேர்த்துள்ளோம்!
+    matrix_high = 152.0
+    matrix_low = 147.0
     day_open = 148.0
     day_change = 2.0
     pct_change = 1.35
