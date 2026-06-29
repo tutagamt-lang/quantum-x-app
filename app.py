@@ -168,7 +168,6 @@ def fetch_stock_news(symbol):
         news_list = [{"title": f"Analyzing market intelligence for {symbol}", "link": "#", "date": "Just now", "source": "NSE"}]
     return news_list
 
-# API முடக்கத்தைத் தவிர்க்க 60 நொடிகள் Cache செய்யப்படுகிறது
 @st.cache_data(ttl=60)
 def fetch_historic_candles(symbol, token, target_date):
     if "smart_conn" in st.session_state:
@@ -233,6 +232,10 @@ if candle_data:
         matrix_low, matrix_close = float(df_15min['Low'].min()), float(df_15min.iloc[-1]['Close'])
         oi_difference = int(df.iloc[-1]['OI']) - int(df.iloc[0]['OI'])
     else:
+        matrix_open, matrix_high, matrix_low, matrix_close = day_open, float(df['High'].max()), float(df['Low'].min()), live_price
+        oi_difference = 54000
+    levels = calculate_pivots(matrix_high, matrix_low, matrix_close, matrix_open)
+else:
     live_price = 150.0
     current_vwap = 149.5
     oi_difference = 2500
@@ -245,17 +248,11 @@ if candle_data:
     pct_change = 1.35
     levels = {"R3": 155, "R2": 153, "R1": 151, "PP": 149, "S1": 147, "S2": 145, "S3": 143}
     df = pd.DataFrame([{"RSI": 55.0, "EMA_9": 149.2, "EMA_21": 148.5}])
-else:
-    # 🛠️ FIXED: Added missing day_open variable to fix NameError completely!
-    live_price, current_vwap, oi_difference, matrix_close, matrix_open, day_open, day_change, pct_change = 150.0, 149.5, 2500, 150.0, 148.0, 148.0, 2.0, 1.35
-    levels = {"R3": 155, "R2": 153, "R1": 151, "PP": 149, "S1": 147, "S2": 145, "S3": 143}
-    df = pd.DataFrame([{"RSI": 55.0, "EMA_9": 149.2, "EMA_21": 148.5}])
 
 # Navigation Tabs
 tab_live, tab_news = st.tabs(["Equity & Derivatives Terminal", "Company Insights & News"])
 
 with tab_live:
-    # ⏱️ REFRESH CONTAINER (WebSocket லைவ் டேட்டாவை மட்டும் 2 வினாடிக்கு ஒருமுறை புதுப்பிக்கிறது)
     @st.fragment(run_every="2s")
     def render_live_metrics():
         current_live_price = st.session_state["live_prices"].get(active_token, live_price) if st.session_state["live_prices"].get(active_token, 0.0) > 0 else live_price
@@ -334,21 +331,14 @@ with tab_live:
         </div>
         """, unsafe_allow_html=True)
 
-    # 4. 📈 REAL-TIME NO-LOGIN TRADINGVIEW CHART
+    # 4. 📈 REAL-TIME NO-LOGIN TRADINGVIEW CHART (சரி செய்யப்பட்டது)
     st.markdown("<div class='nse-panel'><span class='nse-panel-title'>📊 REAL-TIME ADVANCED CANDLESTICK TERMINAL (NO-LOGIN REQUIRED)</span>", unsafe_allow_html=True)
     tv_symbol = TRADINGVIEW_MAP.get(selected_focus, "NSE:SAIL")
     
-   # 4. 📈 REAL-TIME NO-LOGIN TRADINGVIEW CHART (சரி செய்யப்பட்டது)
-    st.markdown("<div class='nse-panel'><span class='nse-panel-title'>📊 REAL-TIME ADVANCED CANDLESTICK TERMINAL (NO-LOGIN REQUIRED)</span>", unsafe_allow_html=True)
-    tv_symbol = TRADINGVIEW_MAP.get(selected_focus, "NSE:SAIL")
-    
-    # 🛠️ புதிய சரி செய்யப்பட்ட TradingView Widget குறியீடு:
     tradingview_widget_html = f"""
     <iframe src="https://s.tradingview.com/widgetembed/?symbol={tv_symbol}&interval=1&symboledit=0&saveimage=1&toolbarbg=f1f3f6&studies=%5B%5D&theme=light&style=1&timezone=Asia%2FKolkata&studies_overrides=%7B%7D&overrides=%7B%7D&enabled_features=%5B%5D&disabled_features=%5B%5D&locale=en" 
     width="100%" height="480" frameborder="0" allowtransparency="true" scrolling="no" allowfullscreen></iframe>
     """
-    st.components.v1.html(tradingview_widget_html, height=480)
-    st.markdown("</div>", unsafe_allow_html=True)
     st.components.v1.html(tradingview_widget_html, height=480)
     st.markdown("</div>", unsafe_allow_html=True)
 
