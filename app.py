@@ -1,4 +1,10 @@
-import streamlit as st
+def show_tradingview_chart():
+    tradingview_widget_html = """
+    <iframe src="https://s.tradingview.com/widgetembed/?symbol=SAIL&interval=5&symboledit=1&saveimage=1&toolbarbg=f1f3f6&studies=%5B%5D&theme=light&style=1&timezone=Asia%2FKolkata&studies_overrides=%7B%7D&overrides=%7B%7D&enabled_features=%5B%22use_localstorage_for_settings_v2%22%5D&disabled_features=%5B%5D&locale=en" 
+    width="100%" height="450" frameborder="0" allowtransparency="true" scrolling="no" allowfullscreen></iframe>
+    """
+    import streamlit as st
+    st.components.v1.html(tradingview_widget_html, height=450)
 import pandas as pd
 import numpy as np
 import plotly.graph_objects as go
@@ -335,12 +341,7 @@ with tab_live:
     st.markdown("<div class='nse-panel'><span class='nse-panel-title'>📊 REAL-TIME ADVANCED CANDLESTICK TERMINAL (NO-LOGIN REQUIRED)</span>", unsafe_allow_html=True)
     tv_symbol = TRADINGVIEW_MAP.get(selected_focus, "BSE:SAIL")
     
-   tradingview_widget_html = """
-    <iframe src="https://s.tradingview.com/widgetembed/?symbol=SAIL&interval=5&symboledit=1&saveimage=1&toolbarbg=f1f3f6&studies=%5B%5D&theme=light&style=1&timezone=Asia%2FKolkata&studies_overrides=%7B%7D&overrides=%7B%7D&enabled_features=%5B%22use_localstorage_for_settings_v2%22%5D&disabled_features=%5B%5D&locale=en" 
-    width="100%" height="450" frameborder="0" allowtransparency="true" scrolling="no" allowfullscreen></iframe>
-    """
-    st.components.v1.html(tradingview_widget_html, height=450)
-    st.markdown("</div>", unsafe_allow_html=True)
+   show_tradingview_chart()
 
 # TAB 2: NEWS & INSIGHTS
 with tab_news:
