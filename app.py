@@ -233,7 +233,6 @@ if candle_data:
         matrix_low, matrix_close = float(df_15min['Low'].min()), float(df_15min.iloc[-1]['Close'])
         oi_difference = int(df.iloc[-1]['OI']) - int(df.iloc[0]['OI'])
     else:
-    # 🛠️ சீரமைக்கப்பட்ட முழுமையான else பகுதி:
     live_price = 150.0
     current_vwap = 149.5
     oi_difference = 2500
