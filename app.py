@@ -351,7 +351,7 @@ with tab_live:
         "locale": "en",
         "toolbar_bg": "#f1f3f6",
         "enable_publishing": false,
-        "hide_side_toolbar": true,
+        "hide_side_toolbar": false,
         "allow_symbol_change": true,
         "container_id": "tradingview_advanced_chart"
       }});
