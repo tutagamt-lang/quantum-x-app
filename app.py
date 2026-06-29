@@ -15,9 +15,6 @@ import time
 # 1. Page Configuration
 st.set_page_config(layout="centered", page_title="QUANTUM-X Live Trading Terminal")
 
-# ⏱️ ஆட்டோ ரெஃப்ரெஷ் (WebSocket தரவை உடனுக்குடன் திரையில் காட்ட 1 வினாடி)
-st.fragment(run_every="1s")
-
 try:
     from SmartApi import SmartConnect
     from SmartApi.smartWebSocketV2 import SmartWebSocketV2
@@ -87,7 +84,6 @@ if "smart_conn" not in st.session_state:
 MY_STOCKS = ["SAIL", "VEDL", "HINDALCO", "NATIONALUM", "HINDCOPPER"]
 TOKEN_MAP = {"SAIL": "2963", "VEDL": "3063", "HINDALCO": "1363", "NATIONALUM": "6364", "HINDCOPPER": "3103"}
 
-# 📊 TRADINGVIEW WIDGET SYMBOL MAP (லாகின் தேவையில்லாமல் நேரடியாகப் பார்க்க)
 TRADINGVIEW_MAP = {
     "SAIL": "NSE:SAIL",
     "VEDL": "NSE:VEDL",
@@ -172,6 +168,8 @@ def fetch_stock_news(symbol):
         news_list = [{"title": f"Analyzing market intelligence for {symbol}", "link": "#", "date": "Just now", "source": "NSE"}]
     return news_list
 
+# API முடக்கத்தைத் தவிர்க்க 60 நொடிகள் Cache செய்யப்படுகிறது
+@st.cache_data(ttl=60)
 def fetch_historic_candles(symbol, token, target_date):
     if "smart_conn" in st.session_state:
         try:
@@ -239,38 +237,47 @@ if candle_data:
         oi_difference = 54000
     levels = calculate_pivots(matrix_high, matrix_low, matrix_close, matrix_open)
 else:
-    live_price, current_vwap, oi_difference, matrix_close, matrix_open, day_change, pct_change = 150.0, 149.5, 2500, 150.0, 148.0, 2.0, 1.35
+    # 🛠️ FIXED: Added missing day_open variable to fix NameError completely!
+    live_price, current_vwap, oi_difference, matrix_close, matrix_open, day_open, day_change, pct_change = 150.0, 149.5, 2500, 150.0, 148.0, 148.0, 2.0, 1.35
     levels = {"R3": 155, "R2": 153, "R1": 151, "PP": 149, "S1": 147, "S2": 145, "S3": 143}
     df = pd.DataFrame([{"RSI": 55.0, "EMA_9": 149.2, "EMA_21": 148.5}])
 
-# Navigation Tabs (F&O நீக்கப்பட்டு முதல் பக்கத்திற்குள் கொண்டுவரப்பட்டுள்ளது)
+# Navigation Tabs
 tab_live, tab_news = st.tabs(["Equity & Derivatives Terminal", "Company Insights & News"])
 
 with tab_live:
-    # 1. TOP LIVE PRICE METRICS
-    dc_color = "#00B074" if day_change >= 0 else "#f44336"
-    st.markdown(f"""
-    <div class="nse-grid">
-        <div class="nse-card" style="border-top: 4px solid {dc_color};">
-            <div class="nse-label">LTP PRICE (WEBSOCKET)</div>
-            <div class="nse-value" style="color:{dc_color};">₹ {live_price:.2f} <span style="font-size:11px; font-weight:700;"><br>{day_change:+.2f} ({pct_change:+.2f}%)</span></div>
+    # ⏱️ REFRESH CONTAINER (WebSocket லைவ் டேட்டாவை மட்டும் 2 வினாடிக்கு ஒருமுறை புதுப்பிக்கிறது)
+    @st.fragment(run_every="2s")
+    def render_live_metrics():
+        current_live_price = st.session_state["live_prices"].get(active_token, live_price) if st.session_state["live_prices"].get(active_token, 0.0) > 0 else live_price
+        current_change = current_live_price - day_open
+        current_pct = ((current_change / day_open) * 100) if day_open != 0 else 0.0
+        display_color = "#00B074" if current_change >= 0 else "#f44336"
+        
+        st.markdown(f"""
+        <div class="nse-grid">
+            <div class="nse-card" style="border-top: 4px solid {display_color};">
+                <div class="nse-label">LTP PRICE (WEBSOCKET)</div>
+                <div class="nse-value" style="color:{display_color};">₹ {current_live_price:.2f} <span style="font-size:11px; font-weight:700;"><br>{current_change:+.2f} ({current_pct:+.2f}%)</span></div>
+            </div>
+            <div class="nse-card">
+                <div class="nse-label">INTRADAY VWAP</div>
+                <div class="nse-value">₹ {current_vwap:.2f}</div>
+            </div>
+            <div class="nse-card">
+                <div class="nse-label">MOMENTUM RSI (14)</div>
+                <div class="nse-value" style="color:#ffb81c;">{df.iloc[-1]['RSI']:.2f}</div>
+            </div>
+            <div class="nse-card">
+                <div class="nse-label">EMA CROSSOVER (9/21)</div>
+                <div class="nse-value" style="font-size:16px; padding-top:4px;">{df.iloc[-1]['EMA_9']:.1f} / {df.iloc[-1]['EMA_21']:.1f}</div>
+            </div>
         </div>
-        <div class="nse-card">
-            <div class="nse-label">INTRADAY VWAP</div>
-            <div class="nse-value">₹ {current_vwap:.2f}</div>
-        </div>
-        <div class="nse-card">
-            <div class="nse-label">MOMENTUM RSI (14)</div>
-            <div class="nse-value" style="color:#ffb81c;">{df.iloc[-1]['RSI']:.2f}</div>
-        </div>
-        <div class="nse-card">
-            <div class="nse-label">EMA CROSSOVER (9/21)</div>
-            <div class="nse-value" style="font-size:16px; padding-top:4px;">{df.iloc[-1]['EMA_9']:.1f} / {df.iloc[-1]['EMA_21']:.1f}</div>
-        </div>
-    </div>
-    """, unsafe_allow_html=True)
+        """, unsafe_allow_html=True)
+    
+    render_live_metrics()
 
-    # 2. ⚡ DERIVATIVES (F&O MATRIX) & OPTION RADAR - (உங்களது விருப்பப்படி மேலே கொண்டு வரப்பட்டுள்ளது)
+    # 2. ⚡ DERIVATIVES (F&O MATRIX) & OPTION RADAR
     round_ltp = round(live_price / 10) * 10
     h_call, h_put = round_ltp + 10, round_ltp - 10
     fo_label, trend_color = get_fo_regime(live_price - day_open, oi_difference)
@@ -283,7 +290,7 @@ with tab_live:
         signal_desc = f"விலை VWAP நிலைக்குக் கீழேயும், 'Short Buildup' விற்பனை அழுத்தம் நிலவுவதால், பங்கின் விலை அடுத்த சப்போர்ட் லெவலான {h_put} நோக்கி வீழ்ச்சியடையலாம்."
     else:
         strategy_signal, sig_box_color = "MARKET CONSOLIDATION (NEUTRAL)", "#ffb81c"
-        signal_desc = "டெரிவேட்டிவ் சந்தை மற்றும் ஆப்ชั่นஸ் தரவுகள் தெளிவற்ற பக்கவாட்டு நகர்வை (Sideways) காட்டுவதால், புதிய வர்த்தகத்தைத் தவிர்க்கவும்."
+        signal_desc = "டெரிவேட்டிவ் சந்தை மற்றும் ஆப்ஷன்ஸ் தரவுகள் தெளிவற்ற பக்கவாட்டு நகர்வை (Sideways) காட்டுவதால், புதிய வர்த்தகத்தைத் தவிர்க்கவும்."
 
     f_col1, f_col2 = st.columns(2)
     with f_col1:
@@ -318,12 +325,10 @@ with tab_live:
         </div>
         """, unsafe_allow_html=True)
 
-    # 4. 📈 REAL-TIME NO-LOGIN TRADINGVIEW CHART - (கடைசிப் பகுதிக்குக் கொண்டு வரப்பட்டுள்ளது)
+    # 4. 📈 REAL-TIME NO-LOGIN TRADINGVIEW CHART
     st.markdown("<div class='nse-panel'><span class='nse-panel-title'>📊 REAL-TIME ADVANCED CANDLESTICK TERMINAL (NO-LOGIN REQUIRED)</span>", unsafe_allow_html=True)
-    
     tv_symbol = TRADINGVIEW_MAP.get(selected_focus, "NSE:SAIL")
     
-    # லாகின் தேவைப்படாத அசல் லைவ் டிரேடிங்வியூ விட்ஜெட் குறியீடு (Embed Script via iframe)
     tradingview_widget_html = f"""
     <iframe src="https://s.tradingview.com/widgetembed/?frameElementId=tradingview_chart&symbol={tv_symbol}&interval=1&hidesidetoolbar=0&symboledit=1&saveimage=1&toolbarbg=f1f3f6&studies=%5B%5D&theme=light&style=1&timezone=Asia%2FKolkata&studies_overrides=%7B%7D&overrides=%7B%7D&enabled_features=%5B%5D&disabled_features=%5B%5D&locale=en" 
     width="100%" height="480" frameborder="0" allowtransparency="true" scrolling="no" allowfullscreen></iframe>
