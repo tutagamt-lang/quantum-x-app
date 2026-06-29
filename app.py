@@ -335,15 +335,15 @@ with tab_live:
     st.markdown("<div class='nse-panel'><span class='nse-panel-title'>📊 REAL-TIME ADVANCED CANDLESTICK TERMINAL (NO-LOGIN REQUIRED)</span>", unsafe_allow_html=True)
     tv_symbol = TRADINGVIEW_MAP.get(selected_focus, "BSE:SAIL")
     
-    tradingview_widget_html = """
+    tradingview_widget_html = f"""
     <div class="tradingview-widget-container" style="height:480px;width:100%">
       <div id="tradingview_advanced_chart" style="height:430px;width:100%"></div>
       <script type="text/javascript" src="https://s3.tradingview.com/tv.js"></script>
       <script type="text/javascript">
-      new TradingView.widget({
+      new TradingView.widget({{
         "width": "100%",
         "height": 430,
-        "symbol": "BSE:SAIL",
+        "symbol": "{tv_symbol}",
         "interval": "5",
         "timezone": "Asia/Kolkata",
         "theme": "light",
@@ -354,7 +354,7 @@ with tab_live:
         "hide_side_toolbar": false,
         "allow_symbol_change": true,
         "container_id": "tradingview_advanced_chart"
-      });
+      }});
       </script>
     </div>
     """
