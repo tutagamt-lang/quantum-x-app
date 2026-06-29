@@ -1,10 +1,3 @@
-def show_tradingview_chart():
-    tradingview_widget_html = """
-    <iframe src="https://s.tradingview.com/widgetembed/?symbol=SAIL&interval=5&symboledit=1&saveimage=1&toolbarbg=f1f3f6&studies=%5B%5D&theme=light&style=1&timezone=Asia%2FKolkata&studies_overrides=%7B%7D&overrides=%7B%7D&enabled_features=%5B%22use_localstorage_for_settings_v2%22%5D&disabled_features=%5B%5D&locale=en" 
-    width="100%" height="450" frameborder="0" allowtransparency="true" scrolling="no" allowfullscreen></iframe>
-    """
-    import streamlit as st
-    st.components.v1.html(tradingview_widget_html, height=450)
 import pandas as pd
 import numpy as np
 import plotly.graph_objects as go
@@ -17,6 +10,7 @@ import urllib.request
 import xml.etree.ElementTree as ET
 import threading
 import time
+import streamlit as st
 
 # 1. Page Configuration
 st.set_page_config(layout="centered", page_title="QUANTUM-X Live Trading Terminal")
@@ -91,11 +85,11 @@ MY_STOCKS = ["SAIL", "VEDL", "HINDALCO", "NATIONALUM", "HINDCOPPER"]
 TOKEN_MAP = {"SAIL": "2963", "VEDL": "3063", "HINDALCO": "1363", "NATIONALUM": "6364", "HINDCOPPER": "3103"}
 
 TRADINGVIEW_MAP = {
-    "SAIL": "BSE:SAIL",
-    "VEDL": "BSE:VEDL",
-    "HINDALCO": "BSE:HINDALCO",
-    "NATIONALUM": "BSE:NATIONALUM",
-    "HINDCOPPER": "BSE:HINDCOPPER"
+    "SAIL": "SAIL",
+    "VEDL": "VEDL",
+    "HINDALCO": "HINDALCO",
+    "NATIONALUM": "NATIONALUM",
+    "HINDCOPPER": "HINDCOPPER"
 }
 
 # ⚡ WEBSOCKET LIVE PRICE BUFFER
@@ -337,11 +331,15 @@ with tab_live:
         </div>
         """, unsafe_allow_html=True)
 
-    # 4. 📈 REAL-TIME NO-LOGIN TRADINGVIEW CHART (சரி செய்யப்பட்டது)
+    # 4. 📈 REAL-TIME NO-LOGIN TRADINGVIEW CHART (DYNAMICS ALIGNED)
     st.markdown("<div class='nse-panel'><span class='nse-panel-title'>📊 REAL-TIME ADVANCED CANDLESTICK TERMINAL (NO-LOGIN REQUIRED)</span>", unsafe_allow_html=True)
-    tv_symbol = TRADINGVIEW_MAP.get(selected_focus, "BSE:SAIL")
+    tv_symbol = TRADINGVIEW_MAP.get(selected_focus, "SAIL")
     
-   show_tradingview_chart()
+    tradingview_widget_html = f"""
+    <iframe src="https://s.tradingview.com/widgetembed/?symbol={tv_symbol}&interval=5&symboledit=1&saveimage=1&toolbarbg=f1f3f6&studies=%5B%5D&theme=light&style=1&timezone=Asia%2FKolkata&studies_overrides=%7B%7D&overrides=%7B%7D&enabled_features=%5B%22use_localstorage_for_settings_v2%22%5D&disabled_features=%5B%5D&locale=en" 
+    width="100%" height="450" frameborder="0" allowtransparency="true" scrolling="no" allowfullscreen></iframe>
+    """
+    st.components.v1.html(tradingview_widget_html, height=450)
 
 # TAB 2: NEWS & INSIGHTS
 with tab_news:
