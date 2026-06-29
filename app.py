@@ -333,14 +333,32 @@ with tab_live:
 
     # 4. 📈 REAL-TIME NO-LOGIN TRADINGVIEW CHART (சரி செய்யப்பட்டது)
     st.markdown("<div class='nse-panel'><span class='nse-panel-title'>📊 REAL-TIME ADVANCED CANDLESTICK TERMINAL (NO-LOGIN REQUIRED)</span>", unsafe_allow_html=True)
-    tv_symbol = TRADINGVIEW_MAP.get(selected_focus, "NSE:SAIL")
+    tv_symbol = TRADINGVIEW_MAP.get(selected_focus, "BSE:SAIL")
     
     tradingview_widget_html = f"""
-    <iframe src="https://s.tradingview.com/widgetembed/?symbol={tv_symbol}&interval=1&symboledit=0&saveimage=1&toolbarbg=f1f3f6&studies=%5B%5D&theme=light&style=1&timezone=Asia%2FKolkata&studies_overrides=%7B%7D&overrides=%7B%7D&enabled_features=%5B%5D&disabled_features=%5B%5D&locale=en" 
-    width="100%" height="480" frameborder="0" allowtransparency="true" scrolling="no" allowfullscreen></iframe>
+    <div class="tradingview-widget-container" style="height:480px;width:100%">
+      <div id="tradingview_advanced_chart" style="height:430px;width:100%"></div>
+      <script type="text/javascript" src="https://s3.tradingview.com/tv.js"></script>
+      <script type="text/javascript">
+      new TradingView.widget({{
+        "width": "100%",
+        "height": 430,
+        "symbol": "{tv_symbol}",
+        "interval": "5",
+        "timezone": "Asia/Kolkata",
+        "theme": "light",
+        "style": "1",
+        "locale": "en",
+        "toolbar_bg": "#f1f3f6",
+        "enable_publishing": false,
+        "hide_side_toolbar": true,
+        "allow_symbol_change": true,
+        "container_id": "tradingview_advanced_chart"
+      }});
+      </script>
+    </div>
     """
-    st.components.v1.html(tradingview_widget_html, height=480)
-    st.markdown("</div>", unsafe_allow_html=True)
+    st.components.v1.html(tradingview_widget_html, height=450)
 
 # TAB 2: NEWS & INSIGHTS
 with tab_news:
