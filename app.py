@@ -10,6 +10,7 @@ import urllib.request
 import xml.etree.ElementTree as ET
 import threading
 import time
+import json
 import streamlit as st
 
 # 1. Page Configuration
@@ -87,18 +88,15 @@ TOKEN_MAP = {"SAIL": "2963", "VEDL": "3063", "HINDALCO": "1363", "NATIONALUM": "
 # 🌐 NSE ALL STOCKS TOKEN SEARCH LOADER
 @st.cache_data(ttl=86400)
 def load_all_nse_tokens():
-    """Angel One Open-Source Token Listலிருந்து அனைத்து NSE பங்குகளையும் மேப் செய்கிறது"""
     try:
         url = "https://margincalculator.angelbroking.com/OpenAPI_ScripMaster/OpenAPIScripMaster.json"
         req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
         with urllib.request.urlopen(req) as response:
-            import json
             data = json.loads(response.read().decode())
-            # NSE EQ பங்குகளை மட்டும் பில்டர் செய்தல்
             token_dict = {item['symbol'].replace("-EQ", ""): item['token'] for item in data if item['exch_seg'] == 'NSE' and item['symbol'].endswith('-EQ')}
             return token_dict
     except Exception:
-        return TOKEN_MAP # பிழை ஏற்பட்டால் டீபால்ட் மேப் வேலை செய்யும்
+        return TOKEN_MAP
 
 ALL_NSE_TOKENS = load_all_nse_tokens()
 ALL_STOCK_KEYS = sorted(list(set(MY_STOCKS + list(ALL_NSE_TOKENS.keys()))))
@@ -147,7 +145,7 @@ def start_websocket_streaming():
 if "smart_conn" in st.session_state:
     start_websocket_streaming()
 
-# --- பழைய உத்தி கணக்கீடு (மாற்றப்படவில்லை) ---
+# --- பழைய உத்தி கணக்கீடு ---
 def get_fo_regime(price_change, oi_change):
     if oi_change > 0 and price_change > 0: return "Long Buildup", "#10B981"
     elif oi_change > 0 and price_change <= 0: return "Short Buildup", "#EF4444"
@@ -212,6 +210,23 @@ active_token = ALL_NSE_TOKENS.get(selected_focus, "2963")
 if active_token not in st.session_state["live_prices"]:
     st.session_state["live_prices"][active_token] = 0.0
 
+# 📡 🔄 [மாற்றம்] ஏஞ்சல் ஒன் மார்க்கெட் டேட்டா API மூலம் உண்மையான எக்ஸ்சேஞ்ச் Live Future OI பெறுதல்
+exchange_live_oi = 0
+if "smart_conn" in st.session_state:
+    try:
+        # MODE 3 (FULL) அல்லது MODE 1 பயன்படுத்தி ஓப்பன் இன்ட்ரெஸ்ட் எடுக்கப்படுகிறது
+        payload = {
+            "correlationId": "quantum_x_oi",
+            "action": 1,
+            "mode": 3,
+            "tokenList": [{"exchangeType": 1, "tokens": [active_token]}]
+        }
+        market_data = st.session_state["smart_conn"].getMarketData(mode="FULL", data=payload)
+        if market_data and 'data' in market_data and 'fetched' in market_data['data'] and len(market_data['data']['fetched']) > 0:
+            exchange_live_oi = int(market_data['data']['fetched'][0].get('openInterest', 0))
+    except Exception:
+        pass
+
 candle_data = fetch_historic_candles(selected_focus, active_token, today_str)
 if not candle_data:
     for i in range(1, 5):
@@ -229,7 +244,9 @@ live_oi_change = 0
 
 if candle_data:
     df = pd.DataFrame(candle_data, columns=['Timestamp', 'Open', 'High', 'Low', 'Close', 'Volume'])
-    df['OI'] = df['Volume'] * 2.4  
+    
+    # [மாற்றம்] உங்களின் பழைய 'Volume * 2.4' கணக்கீடு சிதைக்கப்படாமல் OI_Calc ஆக வைக்கப்பட்டுள்ளது
+    df['OI_Calc'] = df['Volume'] * 2.4  
     df['Timestamp'] = pd.to_datetime(df['Timestamp'])
     df.set_index('Timestamp', inplace=True)
     df = df.sort_index()
@@ -250,18 +267,19 @@ if candle_data:
     day_change = live_price - day_open
     pct_change = ((day_change / day_open) * 100) if day_open != 0 else 0.0
     
-    # 9:15 மற்றும் 9:30 OI மதிப்பீடு
+    # ⏱️ [மாற்றம்] 9:15 மற்றும் 9:30 OI மதிப்பீடு துல்லியமாகப் பிரிக்கப்படுகிறது
     try:
-        oi_915 = int(df.between_time('09:15', '09:16').iloc[0]['OI'])
+        oi_915 = int(df.between_time('09:15', '09:16').iloc[0]['OI_Calc'])
     except Exception:
-        oi_915 = int(df.iloc[0]['OI'])
+        oi_915 = int(df.iloc[0]['OI_Calc'])
 
     try:
-        oi_930 = int(df.between_time('09:30', '09:31').iloc[0]['OI'])
+        oi_930 = int(df.between_time('09:30', '09:31').iloc[0]['OI_Calc'])
     except Exception:
-        oi_930 = int(df.iloc[min(15, len(df)-1)]['OI'])
+        oi_930 = int(df.iloc[min(15, len(df)-1)]['OI_Calc'])
 
-    live_oi_value = int(df.iloc[-1]['OI'])
+    # [மாற்றம்] எக்ஸ்சேஞ்ச் உண்மையான Live OI கிடைத்தால் அதுவே முதன்மை; இல்லையேல் Fallback
+    live_oi_value = exchange_live_oi if exchange_live_oi > 0 else int(df.iloc[-1]['OI_Calc'])
     live_oi_change = live_oi_value - oi_915
     
     df_15min = df[(df.index.hour == 9) & (df.index.minute >= 15) & (df.index.minute <= 30)]
