@@ -145,7 +145,7 @@ def start_websocket_streaming():
 if "smart_conn" in st.session_state:
     start_websocket_streaming()
 
-# --- பழைய உத்தி கணக்கீடு ---
+# --- உத்தி கணக்கீடு ---
 def get_fo_regime(price_change, oi_change):
     if oi_change > 0 and price_change > 0: return "Long Buildup", "#10B981"
     elif oi_change > 0 and price_change <= 0: return "Short Buildup", "#EF4444"
@@ -210,11 +210,10 @@ active_token = ALL_NSE_TOKENS.get(selected_focus, "2963")
 if active_token not in st.session_state["live_prices"]:
     st.session_state["live_prices"][active_token] = 0.0
 
-# 📡 🔄 [மாற்றம்] ஏஞ்சல் ஒன் மார்க்கெட் டேட்டா API மூலம் உண்மையான எக்ஸ்சேஞ்ச் Live Future OI பெறுதல்
+# ஏஞ்சல் ஒன் மார்க்கெட் டேட்டா API மூலம் உண்மையான எக்ஸ்சேஞ்ச் Live Future OI பெறுதல்
 exchange_live_oi = 0
 if "smart_conn" in st.session_state:
     try:
-        # MODE 3 (FULL) அல்லது MODE 1 பயன்படுத்தி ஓப்பன் இன்ட்ரெஸ்ட் எடுக்கப்படுகிறது
         payload = {
             "correlationId": "quantum_x_oi",
             "action": 1,
@@ -244,8 +243,6 @@ live_oi_change = 0
 
 if candle_data:
     df = pd.DataFrame(candle_data, columns=['Timestamp', 'Open', 'High', 'Low', 'Close', 'Volume'])
-    
-    # [மாற்றம்] உங்களின் பழைய 'Volume * 2.4' கணக்கீடு சிதைக்கப்படாமல் OI_Calc ஆக வைக்கப்பட்டுள்ளது
     df['OI_Calc'] = df['Volume'] * 2.4  
     df['Timestamp'] = pd.to_datetime(df['Timestamp'])
     df.set_index('Timestamp', inplace=True)
@@ -267,7 +264,6 @@ if candle_data:
     day_change = live_price - day_open
     pct_change = ((day_change / day_open) * 100) if day_open != 0 else 0.0
     
-    # ⏱️ [மாற்றம்] 9:15 மற்றும் 9:30 OI மதிப்பீடு துல்லியமாகப் பிரிக்கப்படுகிறது
     try:
         oi_915 = int(df.between_time('09:15', '09:16').iloc[0]['OI_Calc'])
     except Exception:
@@ -278,7 +274,6 @@ if candle_data:
     except Exception:
         oi_930 = int(df.iloc[min(15, len(df)-1)]['OI_Calc'])
 
-    # [மாற்றம்] எக்ஸ்சேஞ்ச் உண்மையான Live OI கிடைத்தால் அதுவே முதன்மை; இல்லையேல் Fallback
     live_oi_value = exchange_live_oi if exchange_live_oi > 0 else int(df.iloc[-1]['OI_Calc'])
     live_oi_change = live_oi_value - oi_915
     
@@ -304,13 +299,21 @@ else:
 tab_live, tab_news = st.tabs(["Equity & Derivatives Terminal", "Company Insights & News"])
 
 with tab_live:
-    @st.fragment(run_every="2s")
-    def render_live_metrics():
-        current_live_price = st.session_state["live_prices"].get(active_token, live_price) if st.session_state["live_prices"].get(active_token, 0.0) > 0 else live_price
+    # 🌟 துல்லியமான நேரடி விலையைக் காட்டும் மாறும் பகுதி (Fragment)
+    @st.fragment(run_every=2)
+    def render_live_metrics_and_cards():
+        # வெப்சாக்கெட்டில் இருந்து தற்போதைய நேரடி விலையைப் பெறுதல்
+        current_live_price = st.session_state["live_prices"].get(active_token, 0.0)
+        
+        # வெப்சாக்கெட் விலை கிடைக்கவில்லை எனில் API மூலம் கிடைத்த வரலாற்று மெழுகுவர்த்தி விலையைப் பயன்படுத்தவும்
+        if current_live_price == 0.0:
+            current_live_price = live_price
+
         current_change = current_live_price - day_open
         current_pct = ((current_change / day_open) * 100) if day_open != 0 else 0.0
         display_color = "#00B074" if current_change >= 0 else "#f44336"
         
+        # 📊 1. LIVE PRICE CARD GRID
         st.markdown(f"""
         <div class="nse-grid">
             <div class="nse-card" style="border-top: 4px solid {display_color};">
@@ -331,98 +334,104 @@ with tab_live:
             </div>
         </div>
         """, unsafe_allow_html=True)
-    
-    render_live_metrics()
+        
+        # 🔮 2. FUTURE OPEN INTEREST & OPTION RADAR
+        round_ltp = round(current_live_price / 10) * 10
+        h_call, h_put = round_ltp + 10, round_ltp - 10
+        
+        # நேரடி விலை மாற்றத்தைக் கொண்டு ஓபன் இன்ட்ரெஸ்ட் கணக்கீடு
+        current_fo_label, current_trend_color = get_fo_regime(current_change, live_oi_change)
 
-    # 2. 🔮 FUTURE OPEN INTEREST (F&O) & OPTION RADAR
-    round_ltp = round(live_price / 10) * 10
-    h_call, h_put = round_ltp + 10, round_ltp - 10
-    fo_label, trend_color = get_fo_regime(live_price - day_open, live_oi_change)
+        f_col1, f_col2 = st.columns(2)
+        with f_col1:
+            st.markdown(f"""
+            <div class="nse-panel">
+                <b>🔮 FUTURE OPEN INTEREST (F&O)</b>
+                <table class="nse-table">
+                    <tr><td>Spot Price:</td><td><b>₹ {current_live_price:.2f}</b></td></tr>
+                    <tr><td>Live Future OI Value:</td><td class="mono-num"><b>{live_oi_value:,}</b></td></tr>
+                    <tr style="background:#f1f5f9;"><td style="color:#6574CD; font-weight:700;">Live Future OI Changes:</td><td class="mono-num" style="color:{current_trend_color}; font-weight:700;"><b>{live_oi_change:+,}</b></td></tr>
+                    <tr><td>Open Trend:</td><td style="color:{current_trend_color}; font-weight:700;">{current_fo_label.upper()}</td></tr>
+                </table>
+            </div>
+            """, unsafe_allow_html=True)
+        with f_col2:
+            st.markdown(f'<div class="nse-panel"><b>🎯 OPTION CHAIN RADAR</b><table class="nse-table"><tr><td>Call OI (Res.):</td><td style="color:#f44336;"><b>₹ {h_call} Str.</b></td></tr><tr><td>Put OI (Supp.):</td><td style="color:#00B074;"><b>₹ {h_put} Str.</b></td></tr><tr><td>PCR Ratio:</td><td><b>1.05</b></td></tr></table></div>', unsafe_allow_html=True)
 
-    f_col1, f_col2 = st.columns(2)
-    with f_col1:
+        # 🆕 3. STRATEGY RADAR
+        if current_live_price > df.iloc[-1]['EMA_9'] and current_pct > 0.5: 
+            current_market_trend = "UpTrend"
+        elif current_live_price < df.iloc[-1]['EMA_9'] and current_pct < -0.5: 
+            current_market_trend = "DownTrend"
+        else: 
+            current_market_trend = "Sideways"
+
+        if current_fo_label == "Long Buildup": img_action, img_note = "Buy", "Fresh Positions are coming."
+        elif current_fo_label == "Short Buildup": img_action, img_note = "Sell", "Fresh Positions are coming."
+        elif current_fo_label == "Profit Booking": img_action, img_note = "Buy on Dip", "Existing positions are closing."
+        else: img_action, img_note = "Sell on Rise", "Existing positions are closing."
+
+        target_range, tamil_desc = "", ""
+
+        if current_market_trend == "UpTrend":
+            if current_fo_label == "Long Buildup":
+                target_range = f"₹ {levels['R1']:.2f} - ₹ {levels['R2']:.2f}"
+                tamil_desc = f"சந்தை ஏற்றத்தில் உள்ளது மற்றும் புதிய வாங்குதல்கள் (Long Buildup) தொடர்தால், விலை {target_range} உடைத்து மேலே செல்ல வாய்ப்பு அதிகம்."
+            elif current_fo_label == "Profit Booking":
+                target_range = f"₹ {levels['PP']:.2f} - ₹ {levels['S1']:.2f}"
+                tamil_desc = "சந்தை ஏற்றத்தில் இருந்தாலும் தற்காலிக லாபப் பதிவு நடப்பதால், விலை சற்றே சரிந்து மீண்டும் உயரக்கூடும் (Bounce Back)."
+            elif current_fo_label == "Short Covering":
+                target_range = f"Gap Up Open -> ₹ {levels['PP']:.2f}"
+                tamil_desc = "சந்தை கேப்-அப் ஆகி, பின்னர் சற்றே சரிவைச் சந்திக்கும். எனினும் இது இன்றைய லோ (Low) நிலையைத் தொடாது."
+            else: img_action, target_range, tamil_desc = "It won't occur", "N/A", "UpTrend-இல் Short Buildup வாய்ப்பு இல்லை."
+        elif current_market_trend == "DownTrend":
+            if current_fo_label == "Short Buildup":
+                target_range = f"₹ {levels['S1']:.2f} - ₹ {levels['S2']:.2f}"
+                tamil_desc = f"சந்தை சரிவிலும் புதிய விற்பனை அழுத்தம் அதிகரிப்பதால், விலை {target_range} உடைத்துக் கீழ்நோக்கி வீழும்."
+            elif current_fo_label == "Short Covering":
+                target_range = f"₹ {levels['PP']:.2f} -> Fall"
+                tamil_desc = "சந்தையில் சிறிய மீட்பு தெரிந்தாலும், அது தற்காலிக ஷார்ட் கவரிங் மட்டுமே. மீண்டும் பலத்த வீழ்ச்சி அடைய வாய்ப்புள்ளது."
+            elif current_fo_label == "Profit Booking":
+                target_range = f"₹ {levels['PP']:.2f}"
+                tamil_desc = "சந்தை தொடங்கியவுடன் சற்று கீழ்நோக்கிச் சென்று, பின்னர் மீண்டு வரும் (Bounce Back). ஆனால் ஹை நிலையைத் தொடாது."
+            else: img_action, target_range, tamil_desc = "It won't occur", "N/A", "DownTrend-இல் Long Buildup வாய்ப்பு இல்லை."
+        else: # Sideways
+            if current_fo_label == "Long Buildup":
+                target_range = f"₹ {levels['PP']:.2f} -> ₹ {levels['R1']:.2f}"
+                tamil_desc = f"சந்தை பக்கவாட்டில் இருந்தாலும் Long Buildup காரணமாக விலை உயர்ந்து ₹ {levels['R1']:.2f} வரை செல்லலாம்."
+            elif current_fo_label == "Short Buildup":
+                target_range = f"₹ {levels['PP']:.2f} -> ₹ {levels['S1']:.2f}"
+                tamil_desc = f"விற்பனை அழுத்தம் காரணமாக விலை சரிந்து ₹ {levels['S1']:.2f} லெவல் வரை பயணிக்க வாய்ப்புள்ளது."
+            elif current_fo_label == "Profit Booking":
+                target_range = f"₹ {levels['S1']:.2f} -> ₹ {levels['R1']:.2f}"
+                tamil_desc = f"விலை சப்போர்ட் ₹ {levels['S1']:.2f} ஐத் தொட்டு, பின்னர் அங்கிருந்து மீண்டு ரெசிஸ்டன்ஸ் ₹ {levels['R1']:.2f} ஐ அடைய முயலும்."
+            elif current_fo_label == "Short Covering":
+                target_range = f"₹ {levels['R1']:.2f} -> ₹ {levels['S1']:.2f}"
+                tamil_desc = f"விலை ரெசிஸ்டன்ஸ் ₹ {levels['R1']:.2f} ஐத் தொட்டு, பின்னர் அங்கிருந்து சரிந்து சப்போர்ட் ₹ {levels['S1']:.2f} ஐ நோக்கி வீழும்."
+
+        box_bg = "#10B981" if "Buy" in img_action else ("#EF4444" if "Sell" in img_action else "#ffb81c")
+        
         st.markdown(f"""
-        <div class="nse-panel">
-            <b>🔮 FUTURE OPEN INTEREST (F&O)</b>
-            <table class="nse-table">
-                <tr><td>Spot Price:</td><td><b>₹ {live_price:.2f}</b></td></tr>
-                <tr><td>Live Future OI Value:</td><td class="mono-num"><b>{live_oi_value:,}</b></td></tr>
-                <tr style="background:#f1f5f9;"><td style="color:#6574CD; font-weight:700;">Live Future OI Changes:</td><td class="mono-num" style="color:{trend_color}; font-weight:700;"><b>{live_oi_change:+,}</b></td></tr>
-                <tr><td>Open Trend:</td><td style="color:{trend_color}; font-weight:700;">{fo_label.upper()}</td></tr>
+        <div class="nse-panel" style="border-left: 6px solid {box_bg}; background-color: #FAFAFA;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                <span style="font-size: 15px; font-weight: 700; color: #0c2340;">📋 IMAGE_BD1521 STRATEGY RADAR</span>
+                <span style="background: {box_bg}22; color: {box_bg}; padding: 3px 8px; border-radius: 4px; font-size: 12px; font-weight: 700; border: 1px solid {box_bg};">SIGNAL: {img_action.upper()}</span>
+            </div>
+            <table class="nse-table" style="margin-bottom: 10px; background: transparent;">
+                <tr style="background: none;"><td style="width: 35%; font-weight: 600;">சந்தை போக்கு (Trend):</td><td><b>{current_market_trend.upper()}</b></td></tr>
+                <tr style="background: none;"><td style="font-weight: 600;">Future Open Interest:</td><td><b style="color:{current_trend_color};">{current_fo_label}</b> ({img_note})</td></tr>
+                <tr style="background: none;"><td style="font-weight: 600;">குறிப்பிட்ட எல்லை (Range):</td><td class="mono-num" style="color: #0c2340; font-weight: 700;">{target_range}</td></tr>
             </table>
+            <div style="font-size: 13px; line-height: 1.5; background: #FFFFFF; padding: 10px; border-radius: 4px; border: 1px dashed #CBD5E1;">
+                <b>🎯 தமிழ் உத்தி விளக்கம் (Market Movement):</b> {tamil_desc}
+            </div>
         </div>
         """, unsafe_allow_html=True)
-    with f_col2:
-        st.markdown(f'<div class="nse-panel"><b>🎯 OPTION CHAIN RADAR</b><table class="nse-table"><tr><td>Call OI (Res.):</td><td style="color:#f44336;"><b>₹ {h_call} Str.</b></td></tr><tr><td>Put OI (Supp.):</td><td style="color:#00B074;"><b>₹ {h_put} Str.</b></td></tr><tr><td>PCR Ratio:</td><td><b>1.05</b></td></tr></table></div>', unsafe_allow_html=True)
 
-    # 🆕 image_bd1521.png உத்தி மேட்ரிக்ஸ் பாக்ஸ் (மாற்றங்கள் இன்றி)
-    if live_price > df.iloc[-1]['EMA_9'] and pct_change > 0.5: market_trend = "UpTrend"
-    elif live_price < df.iloc[-1]['EMA_9'] and pct_change < -0.5: market_trend = "DownTrend"
-    else: market_trend = "Sideways"
+    # செயல்பாட்டை இயக்குதல்
+    render_live_metrics_and_cards()
 
-    if fo_label == "Long Buildup": img_action, img_note = "Buy", "Fresh Positions are coming."
-    elif fo_label == "Short Buildup": img_action, img_note = "Sell", "Fresh Positions are coming."
-    elif fo_label == "Profit Booking": img_action, img_note = "Buy on Dip", "Existing positions are closing."
-    else: img_action, img_note = "Sell on Rise", "Existing positions are closing."
-
-    target_range, tamil_desc = "", ""
-
-    if market_trend == "UpTrend":
-        if fo_label == "Long Buildup":
-            target_range = f"₹ {levels['R1']:.2f} - ₹ {levels['R2']:.2f}"
-            tamil_desc = f"சந்தை ஏற்றத்தில் உள்ளது மற்றும் புதிய வாங்குதல்கள் (Long Buildup) தொடர்தால், விலை {target_range} உடைத்து மேலே செல்ல வாய்ப்பு அதிகம்."
-        elif fo_label == "Profit Booking":
-            target_range = f"₹ {levels['PP']:.2f} - ₹ {levels['S1']:.2f}"
-            tamil_desc = "சந்தை ஏற்றத்தில் இருந்தாலும் தற்காலிக லாபப் பதிவு நடப்பதால், விலை சற்றே சரிந்து மீண்டும் உயரக்கூடும் (Bounce Back)."
-        elif fo_label == "Short Covering":
-            target_range = f"Gap Up Open -> ₹ {levels['PP']:.2f}"
-            tamil_desc = "சந்தை கேப்-அப் ஆகி, பின்னர் சற்றே சரிவைச் சந்திக்கும். எனினும் இது இன்றைய லோ (Low) நிலையைத் தொடாது."
-        else: img_action, target_range, tamil_desc = "It won't occur", "N/A", "UpTrend-இல் Short Buildup வாய்ப்பு இல்லை."
-    elif market_trend == "DownTrend":
-        if fo_label == "Short Buildup":
-            target_range = f"₹ {levels['S1']:.2f} - ₹ {levels['S2']:.2f}"
-            tamil_desc = f"சந்தை சரிவிலும் புதிய விற்பனை அழுத்தம் அதிகரிப்பதால், விலை {target_range} உடைத்துக் கீழ்நோக்கி வீழும்."
-        elif fo_label == "Short Covering":
-            target_range = f"₹ {levels['PP']:.2f} -> Fall"
-            tamil_desc = "சந்தையில் சிறிய மீட்பு தெரிந்தாலும், அது தற்காலிக ஷார்ட் கவரிங் மட்டுமே. மீண்டும் பலத்த வீழ்ச்சி அடைய வாய்ப்புள்ளது."
-        elif fo_label == "Profit Booking":
-            target_range = f"₹ {levels['PP']:.2f}"
-            tamil_desc = "சந்தை தொடங்கியவுடன் சற்று கீழ்நோக்கிச் சென்று, பின்னர் மீண்டு வரும் (Bounce Back). ஆனால் ஹை நிலையைத் தொடாது."
-        else: img_action, target_range, tamil_desc = "It won't occur", "N/A", "DownTrend-இல் Long Buildup வாய்ப்பு இல்லை."
-    else: # Sideways
-        if fo_label == "Long Buildup":
-            target_range = f"₹ {levels['PP']:.2f} -> ₹ {levels['R1']:.2f}"
-            tamil_desc = f"சந்தை பக்கவாட்டில் இருந்தாலும் Long Buildup காரணமாக விலை உயர்ந்து ₹ {levels['R1']:.2f} வரை செல்லலாம்."
-        elif fo_label == "Short Buildup":
-            target_range = f"₹ {levels['PP']:.2f} -> ₹ {levels['S1']:.2f}"
-            tamil_desc = f"விற்பனை அழுத்தம் காரணமாக விலை சரிந்து ₹ {levels['S1']:.2f} லெவல் வரை பயணிக்க வாய்ப்புள்ளது."
-        elif fo_label == "Profit Booking":
-            target_range = f"₹ {levels['S1']:.2f} -> ₹ {levels['R1']:.2f}"
-            tamil_desc = f"விலை சப்போர்ட் ₹ {levels['S1']:.2f} ஐத் தொட்டு, பின்னர் அங்கிருந்து மீண்டு ரெசிஸ்டன்ஸ் ₹ {levels['R1']:.2f} ஐ அடைய முயலும்."
-        elif fo_label == "Short Covering":
-            target_range = f"₹ {levels['R1']:.2f} -> ₹ {levels['S1']:.2f}"
-            tamil_desc = f"விலை ரெசிஸ்டன்ஸ் ₹ {levels['R1']:.2f} ஐத் தொட்டு, பின்னர் அங்கிருந்து சரிந்து சப்போர்ட் ₹ {levels['S1']:.2f} ஐ நோக்கி வீழும்."
-
-    box_bg = "#10B981" if "Buy" in img_action else ("#EF4444" if "Sell" in img_action else "#ffb81c")
-    
-    st.markdown(f"""
-    <div class="nse-panel" style="border-left: 6px solid {box_bg}; background-color: #FAFAFA;">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-            <span style="font-size: 15px; font-weight: 700; color: #0c2340;">📋 IMAGE_BD1521 STRATEGY RADAR</span>
-            <span style="background: {box_bg}22; color: {box_bg}; padding: 3px 8px; border-radius: 4px; font-size: 12px; font-weight: 700; border: 1px solid {box_bg};">SIGNAL: {img_action.upper()}</span>
-        </div>
-        <table class="nse-table" style="margin-bottom: 10px; background: transparent;">
-            <tr style="background: none;"><td style="width: 35%; font-weight: 600;">சந்தை போக்கு (Trend):</td><td><b>{market_trend.upper()}</b></td></tr>
-            <tr style="background: none;"><td style="font-weight: 600;">Future Open Interest:</td><td><b style="color:{trend_color};">{fo_label}</b> ({img_note})</td></tr>
-            <tr style="background: none;"><td style="font-weight: 600;">குறிப்பிட்ட எல்லை (Range):</td><td class="mono-num" style="color: #0c2340; font-weight: 700;">{target_range}</td></tr>
-        </table>
-        <div style="font-size: 13px; line-height: 1.5; background: #FFFFFF; padding: 10px; border-radius: 4px; border: 1px dashed #CBD5E1;">
-            <b>🎯 தமிழ் உத்தி விளக்கம் (Market Movement):</b> {tamil_desc}
-        </div>
-    </div>
-    """, unsafe_allow_html=True)
-
-    # 3. NSE PIVOT POINTS ELEMENT ENGINE & BREAKOUT
+    # 🏛️ 4. NSE PIVOT POINTS ELEMENT ENGINE & BREAKOUT
     l_col1, l_col2 = st.columns([1.2, 1])
     with l_col1:
         st.markdown("<div class='nse-panel'><span class='nse-panel-title'>🎯 NSE PIVOT POINTS ELEMENT ENGINE</span>", unsafe_allow_html=True)
@@ -449,9 +458,8 @@ with tab_live:
         </div>
         """, unsafe_allow_html=True)
 
-    # 4. 📈 REAL-TIME NO-LOGIN TRADINGVIEW CHART
+    # 📊 5. REAL-TIME TRADINGVIEW CHART
     st.markdown("<div class='nse-panel'><span class='nse-panel-title'>📊 REAL-TIME ADVANCED CANDLESTICK TERMINAL</span>", unsafe_allow_html=True)
-    
     tradingview_widget_html = f"""
     <iframe src="https://s.tradingview.com/widgetembed/?symbol={selected_focus}&interval=5&symboledit=1&saveimage=1&toolbarbg=f1f3f6&studies=%5B%5D&theme=light&style=1&timezone=Asia%2FKolkata&studies_overrides=%7B%7D&overrides=%7B%7D&enabled_features=%5B%22use_localstorage_for_settings_v2%22%5D&disabled_features=%5B%5D&locale=en" 
     width="100%" height="450" frameborder="0" allowtransparency="true" scrolling="no" allowfullscreen></iframe>
