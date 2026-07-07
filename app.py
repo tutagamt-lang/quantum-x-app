@@ -134,7 +134,7 @@ def start_websocket_streaming(token_to_sub):
         correlation_id = "quantum_x_stream"
         action = 1
         mode = 3
-        token_list = [{"exchangeType": 1, "tokens": [token_to_sub]}]
+        token_list = [{"exchangeType": 1, "tokens": [str(token_to_sub)]}]
         wsapp.subscribe(correlation_id, action, mode, token_list)
 
     def on_error(wsapp, error): pass
@@ -283,10 +283,15 @@ else:
 tab_live, tab_news = st.tabs(["Equity & Derivatives Terminal", "Company Insights & News"])
 
 with tab_live:
-    # 🌟 ஆட்டோமேட்டிக் லைவ் அப்டேட் லாஜிக்
-    current_live_price = st.session_state["live_prices"].get(active_token, 0.0)
-    if current_live_price == 0.0:
-        current_live_price = live_price
+    # 🌟 ஆட்டோமேட்டிக் லைவ் அப்டேட் லாஜிக் (சரியான டோக்கன் விலையைப் பெறுவதை உறுதி செய்தல்)
+    current_live_price = st.session_state["live_prices"].get(str(active_token), 0.0)
+    
+    # வெப்ஸாக்கெட் விலை 0 ஆக இருந்தால் அல்லது தவறாக இருந்தால் கேண்டில் தரவிலிருந்து எடுக்கவும்
+    if current_live_price == 0.0 or current_live_price > 5000:  
+        if 'df' in locals() and not df.empty:
+            current_live_price = float(df.iloc[-1]['Close'])
+        else:
+            current_live_price = live_price
 
     current_change = current_live_price - day_open
     current_pct = ((current_change / day_open) * 100) if day_open != 0 else 0.0
