@@ -136,14 +136,15 @@ if "smart_conn" in st.session_state:
         if market_data and 'data' in market_data and 'fetched' in market_data['data'] and len(market_data['data']['fetched']) > 0:
             fetched_data = market_data['data']['fetched'][0]
             
-            # நேரடி விலை (LTP) மற்றும் ஓபன் இன்ட்ரெஸ்ட் (OI) எடுத்தல்
-            ws_price = float(fetched_data.get('ltp', 0.0))
+            # 🎯 திருத்தம்: ஏபிஐ தரும் லடீபி (LTP) மதிப்பை 100 ஆல் வகுத்து ரூபாயாக மாற்றுதல்
+            ws_price = float(fetched_data.get('ltp', 0.0)) / 100
             exchange_live_oi = int(fetched_data.get('openInterest', 0))
             
             # செஷன் ஸ்டேட்டில் விலையைச் சேமித்தல்
             st.session_state["live_prices"][str(active_token)] = ws_price
     except Exception as e:
         pass
+
 
 # --- உத்தி கணக்கீடு ---
 def get_fo_regime(price_change, oi_change):
