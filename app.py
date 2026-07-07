@@ -306,4 +306,4 @@ with tab_live:
     @st.fragment(run_every=2)
     def render_live_metrics_and_cards():
         # வெப்சாக்கெட்டில் இருந்து தற்போதைய நேரடி விலையைப் பெறுதல்
-        current_live_price = st.session_state["live_prices"].get(active_token, 0.0
+        current_live_price = st.session_state["live_prices"].get(active_token, 0.0)
