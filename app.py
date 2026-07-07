@@ -18,7 +18,6 @@ st.set_page_config(layout="centered", page_title="QUANTUM-X Live Trading Termina
 
 try:
     from SmartApi import SmartConnect
-    from SmartApi.smartWebSocketV2 import SmartWebSocketV2
 except ImportError:
     st.error("தயவுசெய்து உங்கள் requirements.txt கோப்பில் 'smartapi-python' சேர்க்கவும்.")
 
@@ -101,7 +100,7 @@ def load_all_nse_tokens():
 ALL_NSE_TOKENS = load_all_nse_tokens()
 ALL_STOCK_KEYS = sorted(list(set(MY_STOCKS + list(ALL_NSE_TOKENS.keys()))))
 
-# ⚡ WEBSOCKET LIVE PRICE BUFFER
+# ⚡ LIVE PRICE BUFFER FOR SESSION STATE
 if "live_prices" not in st.session_state:
     st.session_state["live_prices"] = {token: 0.0 for token in TOKEN_MAP.values()}
 
@@ -119,49 +118,32 @@ today_str = today_dt.strftime("%Y-%m-%d")
 
 active_token = ALL_NSE_TOKENS.get(selected_focus, "2963")
 
-if active_token not in st.session_state["live_prices"]:
-    st.session_state["live_prices"][active_token] = 0.0
-
-# 📡 WEBSOCKET BACKGROUND THREAD MANAGER
-def start_websocket_streaming(token_to_sub):
-    def on_data(wsapp, msg):
-        if msg and 'last_traded_price' in msg:
-            token = msg.get('token')
-            ltp = float(msg.get('last_traded_price', 0)) / 100
-            st.session_state["live_prices"][token] = ltp
-
-    def on_open(wsapp):
-        correlation_id = "quantum_x_stream"
-        action = 1
-        mode = 3
-        token_list = [{"exchangeType": 1, "tokens": [str(token_to_sub)]}]
-        wsapp.subscribe(correlation_id, action, mode, token_list)
-
-    def on_error(wsapp, error): pass
-    def on_close(wsapp, close_status_code, close_msg): pass
-
-    current_thread_name = f"ws_thread_{token_to_sub}"
-    active_threads = [t.name for t in threading.enumerate()]
-    
-    if current_thread_name not in active_threads and "smart_conn" in st.session_state:
-        try:
-            sws = SmartWebSocketV2(
-                st.session_state["jwt_token"],
-                API_KEY,
-                CLIENT_ID,
-                st.session_state["feed_token"]
-            )
-            sws.on_open = on_open
-            sws.on_data = on_data
-            sws.on_error = on_error
-            sws.on_close = on_close
-            
-            t = threading.Thread(target=sws.connect, name=current_thread_name, daemon=True)
-            t.start()
-        except Exception: pass
+# 📡 DIRECT SMARTAPI LIVE PRICE FETCH (REPLACING WEBSOCKET)
+ws_price = 0.0
+exchange_live_oi = 0
 
 if "smart_conn" in st.session_state:
-    start_websocket_streaming(active_token)
+    try:
+        payload = {
+            "correlationId": "quantum_x_live",
+            "action": 1,
+            "mode": 3,
+            "tokenList": [{"exchangeType": 1, "tokens": [str(active_token)]}]
+        }
+        # நேரடியாக ஏஞ்சல் ஒன் சர்வரில் இருந்து தற்போதைய சந்தை விபரங்களை எடுத்தல்
+        market_data = st.session_state["smart_conn"].getMarketData(mode="FULL", data=payload)
+        
+        if market_data and 'data' in market_data and 'fetched' in market_data['data'] and len(market_data['data']['fetched']) > 0:
+            fetched_data = market_data['data']['fetched'][0]
+            
+            # நேரடி விலை (LTP) மற்றும் ஓபன் இன்ட்ரெஸ்ட் (OI) எடுத்தல்
+            ws_price = float(fetched_data.get('ltp', 0.0))
+            exchange_live_oi = int(fetched_data.get('openInterest', 0))
+            
+            # செஷன் ஸ்டேட்டில் விலையைச் சேமித்தல்
+            st.session_state["live_prices"][str(active_token)] = ws_price
+    except Exception as e:
+        pass
 
 # --- உத்தி கணக்கீடு ---
 def get_fo_regime(price_change, oi_change):
@@ -209,28 +191,12 @@ def fetch_historic_candles(symbol, token, target_date):
         except Exception: pass
     return []
 
-exchange_live_oi = 0
-if "smart_conn" in st.session_state:
-    try:
-        payload = {
-            "correlationId": "quantum_x_oi",
-            "action": 1,
-            "mode": 3,
-            "tokenList": [{"exchangeType": 1, "tokens": [active_token]}]
-        }
-        market_data = st.session_state["smart_conn"].getMarketData(mode="FULL", data=payload)
-        if market_data and 'data' in market_data and 'fetched' in market_data['data'] and len(market_data['data']['fetched']) > 0:
-            exchange_live_oi = int(market_data['data']['fetched'][0].get('openInterest', 0))
-    except Exception: pass
-
 candle_data = fetch_historic_candles(selected_focus, active_token, today_str)
 if not candle_data:
     for i in range(1, 5):
         fallback_date = (today_dt - timedelta(days=i)).strftime("%Y-%m-%d")
         candle_data = fetch_historic_candles(selected_focus, active_token, fallback_date)
         if candle_data: break
-
-ws_price = st.session_state["live_prices"].get(active_token, 0.0)
 
 if candle_data:
     df = pd.DataFrame(candle_data, columns=['Timestamp', 'Open', 'High', 'Low', 'Close', 'Volume'])
@@ -283,15 +249,10 @@ else:
 tab_live, tab_news = st.tabs(["Equity & Derivatives Terminal", "Company Insights & News"])
 
 with tab_live:
-    # 🌟 ஆட்டோமேட்டிக் லைவ் அப்டேட் லாஜிக் (சரியான டோக்கன் விலையைப் பெறுவதை உறுதி செய்தல்)
+    # 🌟 ஆட்டோமேட்டிக் லைவ் அப்டேட் லாஜிக்
     current_live_price = st.session_state["live_prices"].get(str(active_token), 0.0)
-    
-    # வெப்ஸாக்கெட் விலை 0 ஆக இருந்தால் அல்லது தவறாக இருந்தால் கேண்டில் தரவிலிருந்து எடுக்கவும்
-    if current_live_price == 0.0 or current_live_price > 5000:  
-        if 'df' in locals() and not df.empty:
-            current_live_price = float(df.iloc[-1]['Close'])
-        else:
-            current_live_price = live_price
+    if current_live_price == 0.0:
+        current_live_price = live_price
 
     current_change = current_live_price - day_open
     current_pct = ((current_change / day_open) * 100) if day_open != 0 else 0.0
@@ -340,7 +301,7 @@ with tab_live:
     with f_col2:
         st.markdown(f'<div class="nse-panel"><b>🎯 OPTION CHAIN RADAR</b><table class="nse-table"><tr><td>Call OI (Res.):</td><td style="color:#f44336;"><b>₹ {h_call} Str.</b></td></tr><tr><td>Put OI (Supp.):</td><td style="color:#00B074;"><b>₹ {h_put} Str.</b></td></tr><tr><td>PCR Ratio:</td><td><b>1.05</b></td></tr></table></div>', unsafe_allow_html=True)
 
-    # 🆕 3. STRATEGY RADAR
+    # 📋 3. STRATEGY RADAR
     if current_live_price > df.iloc[-1]['EMA_9'] and current_pct > 0.5: current_market_trend = "UpTrend"
     elif current_live_price < df.iloc[-1]['EMA_9'] and current_pct < -0.5: current_market_trend = "DownTrend"
     else: current_market_trend = "Sideways"
@@ -365,7 +326,7 @@ with tab_live:
     elif current_market_trend == "DownTrend":
         if current_fo_label == "Short Buildup":
             target_range = f"₹ {levels['S1']:.2f} - ₹ {levels['S2']:.2f}"
-            tamil_desc = f"சந்தை சரிவிலும் புதிய விற்பனை அழுத்தம் அதிகரிப்பதால், விலை {target_range} உடைத்துக் கீழ்நோக்கி வீழும்."
+            tamil_desc = f"சந்தை சரிவிலும் புதியவிற்பனை அழுத்தம் அதிகரிப்பதால், விலை {target_range} உடைத்துக் கீழ்நோக்கி வீழும்."
         elif current_fo_label == "Short Covering":
             target_range = f"₹ {levels['PP']:.2f} -> Fall"
             tamil_desc = "சந்தையில் சிறிய மீட்பு தெரிந்தாலும், அது தற்காலிக ஷார்ட் கவரிங் மட்டுமே. மீண்டும் பலத்த வீழ்ச்சி அடைய வாய்ப்புள்ளது."
@@ -440,7 +401,7 @@ with tab_live:
     """
     st.components.v1.html(tradingview_widget_html, height=450)
 
-    # 🔁 2 வினாடிக்கு ஒருமுறை பக்கத்தை புதுப்பிக்கும் லாஜிக்
+    # 🔁 2 வினாடிக்கு ஒருமுறை பக்கத்தை புதுப்பித்தல்
     time.sleep(2)
     st.rerun()
 
