@@ -118,7 +118,7 @@ today_str = today_dt.strftime("%Y-%m-%d")
 
 active_token = ALL_NSE_TOKENS.get(selected_focus, "2963")
 
-# 📡 DIRECT SMARTAPI LIVE PRICE FETCH (REPLACING WEBSOCKET)
+# 📡 DIRECT SMARTAPI LIVE PRICE FETCH
 ws_price = 0.0
 exchange_live_oi = 0
 
@@ -130,21 +130,18 @@ if "smart_conn" in st.session_state:
             "mode": 3,
             "tokenList": [{"exchangeType": 1, "tokens": [str(active_token)]}]
         }
-        # நேரடியாக ஏஞ்சல் ஒன் சர்வரில் இருந்து தற்போதைய சந்தை விபரங்களை எடுத்தல்
         market_data = st.session_state["smart_conn"].getMarketData(mode="FULL", data=payload)
         
         if market_data and 'data' in market_data and 'fetched' in market_data['data'] and len(market_data['data']['fetched']) > 0:
             fetched_data = market_data['data']['fetched'][0]
             
-            # 🎯 திருத்தம்: ஏபிஐ தரும் லடீபி (LTP) மதிப்பை 100 ஆல் வகுத்து ரூபாயாக மாற்றுதல்
+            # 🎯 திருத்தம் 1: நேரடி விலையை (LTP) பைசாவிலிருந்து ரூபாயாக மாற்ற 100 ஆல் வகுக்கவும்
             ws_price = float(fetched_data.get('ltp', 0.0)) / 100
             exchange_live_oi = int(fetched_data.get('openInterest', 0))
             
-            # செஷன் ஸ்டேட்டில் விலையைச் சேமித்தல்
             st.session_state["live_prices"][str(active_token)] = ws_price
     except Exception as e:
         pass
-
 
 # --- உத்தி கணக்கீடு ---
 def get_fo_regime(price_change, oi_change):
@@ -201,6 +198,13 @@ if not candle_data:
 
 if candle_data:
     df = pd.DataFrame(candle_data, columns=['Timestamp', 'Open', 'High', 'Low', 'Close', 'Volume'])
+    
+    # 🎯 திருத்தம் 2: கேண்டிலில் உள்ள விலைகள் அனைத்தும் பைசாவில் வருவதால் அவற்றை 100 ஆல் வகுத்து ரூபாயாக மாற்றுகிறோம்
+    df['Open'] = df['Open'] / 100
+    df['High'] = df['High'] / 100
+    df['Low'] = df['Low'] / 100
+    df['Close'] = df['Close'] / 100
+    
     df['OI_Calc'] = df['Volume'] * 2.4  
     df['Timestamp'] = pd.to_datetime(df['Timestamp'])
     df.set_index('Timestamp', inplace=True)
@@ -239,18 +243,17 @@ if candle_data:
         matrix_open, matrix_high, matrix_low, matrix_close = day_open, float(df['High'].max()), float(df['Low'].min()), live_price
     levels = calculate_pivots(matrix_high, matrix_low, matrix_close, matrix_open)
 else:
-    live_price, current_vwap = 150.0, 149.5
+    live_price, current_vwap = 267.0, 267.2
     oi_915, oi_930, live_oi_value, live_oi_change = 450000, 485000, 510000, 60000
-    matrix_open, matrix_close, matrix_high, matrix_low = 148.0, 150.0, 152.0, 147.0
-    day_open, day_change, pct_change = 148.0, 2.0, 1.35
-    levels = {"R3": 155, "R2": 153, "R1": 151, "PP": 149, "S1": 147, "S2": 145, "S3": 143}
-    df = pd.DataFrame([{"RSI": 55.0, "EMA_9": 149.2, "EMA_21": 148.5}])
+    matrix_open, matrix_close, matrix_high, matrix_low = 266.0, 267.0, 268.0, 265.0
+    day_open, day_change, pct_change = 266.0, 1.0, 0.38
+    levels = {"R3": 272, "R2": 270, "R1": 269, "PP": 267, "S1": 265, "S2": 264, "S3": 262}
+    df = pd.DataFrame([{"RSI": 55.0, "EMA_9": 266.8, "EMA_21": 266.5}])
 
 # Navigation Tabs
 tab_live, tab_news = st.tabs(["Equity & Derivatives Terminal", "Company Insights & News"])
 
 with tab_live:
-    # 🌟 ஆட்டோமேட்டிக் லைவ் அப்டேட் லாஜிக்
     current_live_price = st.session_state["live_prices"].get(str(active_token), 0.0)
     if current_live_price == 0.0:
         current_live_price = live_price
@@ -327,7 +330,7 @@ with tab_live:
     elif current_market_trend == "DownTrend":
         if current_fo_label == "Short Buildup":
             target_range = f"₹ {levels['S1']:.2f} - ₹ {levels['S2']:.2f}"
-            tamil_desc = f"சந்தை சரிவிலும் புதியவிற்பனை அழுத்தம் அதிகரிப்பதால், விலை {target_range} உடைத்துக் கீழ்நோக்கி வீழும்."
+            tamil_desc = f"சந்தை சரிவிலும் புதிய விற்பனை அழுத்தம் அதிகரிப்பதால், விலை {target_range} உடைத்துக் கீழ்நோக்கி வீழும்."
         elif current_fo_label == "Short Covering":
             target_range = f"₹ {levels['PP']:.2f} -> Fall"
             tamil_desc = "சந்தையில் சிறிய மீட்பு தெரிந்தாலும், அது தற்காலிக ஷார்ட் கவரிங் மட்டுமே. மீண்டும் பலத்த வீழ்ச்சி அடைய வாய்ப்புள்ளது."
