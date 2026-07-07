@@ -106,19 +106,21 @@ if "live_prices" not in st.session_state:
     st.session_state["live_prices"] = {token: 0.0 for token in TOKEN_MAP.values()}
 
 # 📡 WEBSOCKET BACKGROUND THREAD MANAGER
+# 📡 புதிய டோக்கன்களையும் சேர்க்கும் வெப்சாக்கெட் மேலாளர்
 def start_websocket_streaming():
     def on_data(wsapp, msg):
         if msg and 'last_traded_price' in msg:
             token = msg.get('token')
             ltp = float(msg.get('last_traded_price', 0)) / 100
-            if token in st.session_state["live_prices"]:
-                st.session_state["live_prices"][token] = ltp
+            st.session_state["live_prices"][token] = ltp # அனைத்து டோக்கன் விலையையும் சேமிக்கும்
 
     def on_open(wsapp):
         correlation_id = "quantum_x_stream"
         action = 1
         mode = 3
-        token_list = [{"exchangeType": 1, "tokens": list(TOKEN_MAP.values())}]
+        # TOKEN_MAP-ல் உள்ளவை மட்டுமின்றி, அனைத்து NSE டோக்கன்களையும் சப்ஸ்கிரைப் செய்ய மாற்றுவது சிறந்தது
+        # தற்காலிகமாக பயனர் தேர்ந்தெடுத்த டோக்கனை மட்டும் சப்ஸ்கிரைப் செய்ய:
+        token_list = [{"exchangeType": 1, "tokens": [active_token]}]
         wsapp.subscribe(correlation_id, action, mode, token_list)
 
     def on_error(wsapp, error): pass
